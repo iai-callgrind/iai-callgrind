@@ -23,9 +23,9 @@ receives the return value of the `setup` function as parameter. This is a small
 indirection with great effect. The effect is best shown with an example:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -75,9 +75,9 @@ If you need to specify the same `setup` function for all (or almost all)
 parameter of the `#[library_benchmark]`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -121,9 +121,9 @@ The `teardown` function takes the return value of the benchmark function as its
 argument:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;

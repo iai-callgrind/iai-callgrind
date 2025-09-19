@@ -18,7 +18,7 @@ fi
 # The error disappeared after adding -Cdebuginfo=2 to RUSTFLAGS and running all
 # cargo commands with the nightly toolchain
 export RUSTFLAGS="-Cinstrument-coverage -Cdebuginfo=2" # -Csplit-debuginfo=off
-export LLVM_PROFILE_FILE="iai_callgrind_coverage-%p-%m.profraw"
+export LLVM_PROFILE_FILE="gungraun_coverage-%p-%m.profraw"
 
 bindir="$(dirname "$(rustc --print target-libdir)")/bin"
 if [[ ! -e "${bindir}/llvm-cov" ]]; then

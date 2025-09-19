@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 fn consume_line(path: &PathBuf) -> String {
     let mut file = File::open(path).expect("Opening the file for reading should succeed");
@@ -42,7 +42,7 @@ fn one_line_with_setup(value: u64) {
 #[library_benchmark]
 #[benches::two_lines(file = "benchmark-tests/benches/fixtures/two_lines.fix")]
 fn two_lines(value: String) {
-    let path = PathBuf::from("/tmp/iai-callgrind.two_lines.fix");
+    let path = PathBuf::from("/tmp/gungraun.two_lines.fix");
     if !path.exists() {
         std::fs::create_dir_all(path.parent().unwrap())
             .expect("The temporary directory should exist or being creatable");
@@ -57,7 +57,7 @@ fn two_lines(value: String) {
 #[library_benchmark]
 #[benches::two_lines(file = "benchmark-tests/benches/fixtures/two_lines.fix", setup = string_to_u64)]
 fn two_lines_with_setup(value: u64) {
-    let path = PathBuf::from("/tmp/iai-callgrind.two_lines.fix");
+    let path = PathBuf::from("/tmp/gungraun.two_lines.fix");
     if !path.exists() {
         std::fs::create_dir_all(path.parent().unwrap())
             .expect("The temporary directory should exist or being creatable");

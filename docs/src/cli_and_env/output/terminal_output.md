@@ -32,8 +32,8 @@ output to `stdout`.
 Let's take as example a library benchmark `benches/my_benchmark.rs`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+# extern crate gungraun;
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 fn print_to_stderr(value: u64) {

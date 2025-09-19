@@ -4,7 +4,7 @@
 authors = ["Joining7943 <joining@posteo.de>"]
 autobenches = false
 categories.workspace = true
-description = "Tests for iai-callgrind"
+description = "Tests for gungraun"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
@@ -17,7 +17,7 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [features]
-cachegrind = ["iai-callgrind/cachegrind"]
+cachegrind = ["gungraun/cachegrind"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -26,8 +26,8 @@ colored = { workspace = true }
 either-or-both = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
+gungraun = { path = "../gungraun", features = ["client_requests"] }
 gungraun-runner = { path = "../gungraun-runner" }
-iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
 once_cell = { workspace = true }

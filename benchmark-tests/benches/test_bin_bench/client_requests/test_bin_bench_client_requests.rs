@@ -1,4 +1,4 @@
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Callgrind, Command,
 };
 

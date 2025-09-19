@@ -9,13 +9,13 @@ able to benchmark a client (in our example a crate's binary simply named
 `client`):
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 use std::net::{SocketAddr, TcpListener};
 use std::time::Duration;
 use std::thread;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, Delay, DelayKind
 };
 
@@ -37,8 +37,8 @@ fn setup_tcp_server() {
 }
 
 #[binary_benchmark(setup = setup_tcp_server())]
-fn bench_client() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_client"))
+fn bench_client() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_client"))
         .setup_parallel(true)
         .delay(
             Delay::new(DelayKind::TcpConnect(

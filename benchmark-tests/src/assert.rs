@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
+use gungraun::ValgrindTool;
 use gungraun_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
 use gungraun_runner::runner::callgrind::parser::CallgrindParser;
 use gungraun_runner::runner::common::ModulePath;
 use gungraun_runner::runner::summary::{BaselineKind, BenchmarkSummary};
 use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
-use iai_callgrind::ValgrindTool;
 
 use crate::common::Summary;
 

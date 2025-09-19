@@ -1,9 +1,7 @@
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
-use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig,
-};
+use gungraun::{library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig};
 
 #[library_benchmark]
 #[bench::case_3(vec![1, 2, 3])]

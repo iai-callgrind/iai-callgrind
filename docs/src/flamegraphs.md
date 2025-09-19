@@ -9,9 +9,9 @@ For example create all kind of flamegraphs for all benchmarks in a library
 benchmark:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     FlamegraphConfig, Callgrind
 };
@@ -44,7 +44,7 @@ callgrind output file in the `target/iai`
 Regular callgrind flamegraphs show the inclusive costs for functions and a
 single `EventKind` (default is `EventKind::Ir`), similar to
 `callgrind_annotate`. Suppose the example from above is stored in a benchmark
-`iai_callgrind_benchmark`:
+`gungraun_benchmark`:
 
 ![Regular Flamegraph](./images/flamegraph_regular.svg)
 

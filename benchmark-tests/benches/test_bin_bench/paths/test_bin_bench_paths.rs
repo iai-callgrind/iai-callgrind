@@ -1,7 +1,7 @@
 use std::os::unix::fs::PermissionsExt;
 use std::path::PathBuf;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Callgrind, Command,
     OutputFormat, Sandbox, Stdio,
 };

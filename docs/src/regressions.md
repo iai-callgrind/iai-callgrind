@@ -19,7 +19,7 @@ restrict the `EventKind`, ... by an absolute number.
 
 Note that [comparing baselines](./cli_and_env/baselines.md) also detects
 performance regressions. This can be useful, for example, when setting up
-Gungraun in the [CI](./installation/iai_callgrind.md#in-the-github-ci) to
+Gungraun in the [CI](./installation/gungraun.md#in-the-github-ci) to
 cause a PR to fail when comparing to the main branch.
 
 Regressions are considered errors and will cause the benchmark to fail if they
@@ -39,7 +39,7 @@ total instructions executed `ir` (printed as `Instructions` in the callgrind
 terminal output) to `5%`:
 
 ```shell
-cargo bench --bench iai_callgrind_benchmark -- --callgrind-limits='ir=5%'
+cargo bench --bench gungraun_benchmark -- --callgrind-limits='ir=5%'
 ```
 
 These command-line arguments and environment variables can be used to define
@@ -136,9 +136,9 @@ Benchmark](./benchmarks/library_benchmarks/configuration.md), define a soft
 limit of `+5%` for the `Ir` event kind for all benchmarks of this file:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     Callgrind, EventKind
 };
@@ -200,7 +200,7 @@ Gungraun result: <b><span style="color:#F55">Regressed</span></b>. 0 without reg
 error: bench failed, to rerun pass `-p benchmark-tests --bench lib_bench_regression`
 
 Caused by:
-  process didn't exit successfully: `/home/lenny/workspace/programming/iai-callgrind/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>
+  process didn't exit successfully: `/home/lenny/workspace/programming/gungraun/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>
 
 ## Which event to choose to measure performance regressions?
 

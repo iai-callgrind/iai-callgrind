@@ -149,8 +149,8 @@ dependencies = [
  "either-or-both",
  "fs_extra",
  "glob",
+ "gungraun",
  "gungraun-runner",
- "iai-callgrind",
  "lazy_static",
  "minijinja",
  "once_cell",
@@ -367,7 +367,7 @@ dependencies = [
  "assert_cmd",
  "cty",
  "fs_extra",
- "iai-callgrind",
+ "gungraun",
  "lazy_static",
  "predicates",
  "regex",
@@ -700,6 +700,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
+name = "gungraun"
+version = "0.16.1"
+dependencies = [
+ "bincode",
+ "bindgen",
+ "cc",
+ "cfg-if",
+ "cty",
+ "derive_more",
+ "fs_extra",
+ "gungraun-macros",
+ "gungraun-runner",
+ "regex",
+ "rstest",
+ "rustc_version",
+ "serde",
+ "serde_json",
+ "serial_test",
+ "strum",
+ "trybuild",
+]
+
+[[package]]
 name = "gungraun-macros"
 version = "0.6.1"
 dependencies = [
@@ -776,29 +799,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "561985554c8b8d4808605c90a5f1979cc6c31a5d20b78465cd59501233c6678e"
 dependencies = [
  "never-say-never",
-]
-
-[[package]]
-name = "iai-callgrind"
-version = "0.16.1"
-dependencies = [
- "bincode",
- "bindgen",
- "cc",
- "cfg-if",
- "cty",
- "derive_more",
- "fs_extra",
- "gungraun-macros",
- "gungraun-runner",
- "regex",
- "rstest",
- "rustc_version",
- "serde",
- "serde_json",
- "serial_test",
- "strum",
- "trybuild",
 ]
 
 [[package]]

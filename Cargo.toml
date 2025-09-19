@@ -1,7 +1,7 @@
 # spell-checker: ignore polonius
 [workspace]
 members = [
-  "iai-callgrind",
+  "gungraun",
   "gungraun-runner",
   "gungraun-macros",
   "benchmark-tests",

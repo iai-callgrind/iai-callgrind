@@ -37,9 +37,9 @@ all library benchmarks in the same file in addition to `Callgrind` without the
 need for `--tools=dhat`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     ValgrindTool, Dhat
 };
@@ -67,8 +67,8 @@ set, so if there are any errors, the benchmark run fails with `201`. You can
 overwrite this default for example for `Memcheck`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{Memcheck, ValgrindTool};
+# extern crate gungraun;
+use gungraun::{Memcheck, ValgrindTool};
 
 Memcheck::with_args(["--error-exitcode=0"]);
 ```

@@ -26,9 +26,9 @@ simplified, but conveying the basic idea, here is a commented example:
 ```rust
 // <-- collect-at-start=no
 
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{main,library_benchmark_group, library_benchmark};
+use gungraun::{main,library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -61,8 +61,8 @@ point to the actual function you want to benchmark. As outlined before, this
 works only reliably for functions which are not inlined by the compiler.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{
+# extern crate gungraun;
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };

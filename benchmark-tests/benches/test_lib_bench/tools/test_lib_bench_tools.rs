@@ -11,7 +11,7 @@ struct Right(Option<Rc<RefCell<Left>>>);
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, bubble_sort_allocate, subprocess};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Bbv, Callgrind, Dhat, Drd, EventKind,
     Helgrind, LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat,
 };

@@ -46,7 +46,7 @@ Options:
 
           The output format is intended to be the same as the output format of the libtest harness.
           However, future changes of the output format by cargo might not be incorporated into
-          iai-callgrind. As a consequence, it is not considered safe to rely on the output in
+          gungraun. As a consequence, it is not considered safe to rely on the output in
           scripts.
 
           [env: IAI_CALLGRIND_LIST=]
@@ -70,9 +70,9 @@ Options:
           This argument matches the tool case-insensitive. Note that using cachegrind with this
           option to benchmark library functions needs adjustments to the benchmarking functions with
           client-requests to measure the counts correctly. If you want to switch permanently to
-          cachegrind, it is usually better to activate the `cachegrind` feature of iai-callgrind in
+          cachegrind, it is usually better to activate the `cachegrind` feature of gungraun in
           your Cargo.toml. However, setting a tool with this option overrides cachegrind set with the
-          iai-callgrind feature. See the guide for all details.
+          gungraun feature. See the guide for all details.
 
           [env: IAI_CALLGRIND_DEFAULT_TOOL=]
 
@@ -103,7 +103,7 @@ Options:
           [possible values: true, false]
 
       --home <HOME>
-          Specify the home directory of iai-callgrind benchmark output files
+          Specify the home directory of gungraun benchmark output files
 
           All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
           This option lets you customize this home directory, and it will be created if it doesn't
@@ -112,9 +112,9 @@ Options:
           [env: IAI_CALLGRIND_HOME=]
 
       --separate-targets[=<SEPARATE_TARGETS>]
-          Separate iai-callgrind benchmark output files by target
+          Separate gungraun benchmark output files by target
 
-          The default output path for files created by iai-callgrind and valgrind during the
+          The default output path for files created by gungraun and valgrind during the
           benchmark is
 
           `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.

@@ -5,7 +5,7 @@
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
 This package is not published and exists merely for testing the client requests
-implementation of the [iai-callgrind](../iai-callgrind) package.
+implementation of the [gungraun](../gungraun) package.
 
 # For developers
 

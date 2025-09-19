@@ -3,7 +3,7 @@ use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig, OutputFormat,
 };
 

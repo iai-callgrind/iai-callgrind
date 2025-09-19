@@ -254,12 +254,12 @@ test-doc:
 test-ui:
     @echo "Ensure rust-src is installed for the rust toolchain ${RUSTUP_TOOLCHAIN:-{{ msrv }}}"
     rustup component list --toolchain "${RUSTUP_TOOLCHAIN:-{{ msrv }}}" | grep -q '^\s*rust-src\s*.*installed'
-    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package iai-callgrind --test ui_tests --features ui_tests
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package gungraun --test ui_tests --features ui_tests
 
 # Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset and overwrite the error message fixtures (Uses: 'cargo')
 [group('test')]
 test-ui-overwrite:
-    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test --package iai-callgrind --test ui_tests --features ui_tests
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test --package gungraun --test ui_tests --features ui_tests
 
 # Test all packages. This excludes client request and benchmark tests which need to be run separately (Uses: 'cargo')
 [group('test')]
@@ -328,11 +328,11 @@ book-check-version:
 # Run tests for the book. (Uses: 'cargo +stable', 'mdbook')
 [group('guide')]
 book-tests: book-check-version
-    # Avoid the error `multiple candidates for `rlib` dependency `iai_callgrind` found`
+    # Avoid the error `multiple candidates for `rlib` dependency `gungraun` found`
     cargo clean --profile mdbook
     # We need the stable build because mdbook is built with the stable toolchain
     # and to avoid the error `found invalid metadata files for ...`
-    RUSTUP_TOOLCHAIN=stable just args="--all-features --lib --profile=mdbook" build iai-callgrind
+    RUSTUP_TOOLCHAIN=stable just args="--all-features --lib --profile=mdbook" build gungraun
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
     CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
@@ -356,27 +356,27 @@ book-watch: book-check-version
 [group('guide')]
 book-serve-github: book-check-version
     #!/usr/bin/env -S sh -e
-    serve_dir="/tmp/iai_callgrind_serve_dir"
+    serve_dir="/tmp/gungraun_serve_dir"
     if [[ -e "$serve_dir" ]]; then rm -I "${serve_dir}"/* && rmdir "$serve_dir"; fi
     mkdir "$serve_dir"
     cd "$serve_dir"
-    ln -s "{{ book_build_dir }}" iai-callgrind
+    ln -s "{{ book_build_dir }}" gungraun
     npx nodemon --delay 2.0 --ext 'js,html,css,png,svg,ttf,eot,woff,woff2,txt' --watch "{{ book_build_dir }}" --signal SIGINT --exec 'npx http-server -d false -c-1 -a localhost -p 4000'
 
-# Takes a path to the file with colored output of iai-callgrind and prints the resulting (colored) html for the book to `stdout`. (Uses: 'npx ansi-to-html', 'coreutils', 'sed')
+# Takes a path to the file with colored output of gungraun and prints the resulting (colored) html for the book to `stdout`. (Uses: 'npx ansi-to-html', 'coreutils', 'sed')
 [group('guide')]
 book-term-output path:
     #!/usr/bin/env -S sh -e
     output=$(npx ansi-to-html -f#000 "{{ path }}" | head -c -1 | sed 's/#5F5/#42c142/g')
     echo "<pre><code class=\"hljs\">${output}</code></pre>"
 
-# Bump the iai-callgrind version in the book (Uses: 'sed', 'find')
+# Bump the gungraun version in the book (Uses: 'sed', 'find')
 [group('chore')]
 book-bump old_version new_version:
     #!/usr/bin/env -S sh -e
     old_version_escaped=$(echo {{ old_version }} | sed -E 's/[.]/\\./g')
     # Add new version to versions.js
-    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/iai-callgrind/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
+    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/gungraun/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
     # Set the build directory to new version
     sed -Ei 's:(build-dir\s*=\s*"book)(/'"${old_version_escaped}"')(".*):\1/{{ new_version }}\3:' docs/book.toml
 
@@ -388,7 +388,7 @@ book-bump old_version new_version:
     vprefix="s:v${old_version_escaped}:v{{ new_version }}:g"
     find docs/src/ -type f -iname '*.md' -exec sed -Ei -e "$links" -e "$strings" -e "$at" -e "$flag" -e "$vprefix" '{}' \;
 
-# Bump the version of iai-callgrind (and gungraun-runner, and the guide), gungraun-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
+# Bump the version of gungraun (and gungraun-runner, and the guide), gungraun-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
 [group('chore')]
 bump config part:
     #!/usr/bin/env -S sh -e
@@ -400,6 +400,6 @@ bump config part:
         echo "Bump book from '${current_version}' to '${new_version}'"
         just book-bump "$current_version" "$new_version"
     fi
-    # We also need the changed version in Cargo.lock. Building iai-callgrind
+    # We also need the changed version in Cargo.lock. Building gungraun
     # should be enough to also update the runner
-    just args="--all-features --lib" build iai-callgrind
+    just args="--all-features --lib" build gungraun

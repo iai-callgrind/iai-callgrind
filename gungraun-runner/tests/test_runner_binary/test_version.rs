@@ -15,7 +15,7 @@ fn test_library_version_newer_than_runner_version(#[case] part: &str) {
     };
 
     let expected_stderr = format!(
-        "gungraun_runner: Error: gungraun-runner ({runner_version}) is older than iai-callgrind \
+        "gungraun_runner: Error: gungraun-runner ({runner_version}) is older than gungraun \
          ({library_version}). Please update gungraun-runner by calling 'cargo install --version \
          {library_version} gungraun-runner'\n"
     );
@@ -34,9 +34,9 @@ fn test_library_version_equals_runner_version() {
     let expected_stderr = format!(
         "gungraun_runner: Error: Failed to initialize gungraun-runner: Unexpected number of \
          arguments\n\nDetected version of gungraun-runner is {version}. This error can be caused \
-         by a version mismatch between iai-callgrind and gungraun-runner. If you updated the \
-         library (iai-callgrind) in your Cargo.toml file, the binary (gungraun-runner) needs to \
-         be updated to the same version and vice versa.\n"
+         by a version mismatch between gungraun and gungraun-runner. If you updated the library \
+         (gungraun) in your Cargo.toml file, the binary (gungraun-runner) needs to be updated to \
+         the same version and vice versa.\n"
     );
 
     common::Runner::new()
@@ -46,15 +46,15 @@ fn test_library_version_equals_runner_version() {
         .assert_stdout_is_empty();
 }
 
-// This can happen with versions of `iai-callgrind` < 0.3.0 because we don't submit the library
+// This can happen with versions of `gungraun` < 0.3.0 because we don't submit the library
 // version as first argument
 #[test]
 fn test_library_version_not_submitted() {
     let runner_version = common::get_runner_version();
     let expected_stderr = format!(
-        "gungraun_runner: Error: No version information found for iai-callgrind but \
-         gungraun-runner ({runner_version}) is >= '0.3.0'. Please update iai-callgrind to \
-         '{runner_version}' in your Cargo.toml file\n"
+        "gungraun_runner: Error: No version information found for gungraun but gungraun-runner \
+         ({runner_version}) is >= '0.3.0'. Please update gungraun to '{runner_version}' in your \
+         Cargo.toml file\n"
     );
 
     common::Runner::new()
@@ -77,9 +77,9 @@ fn test_library_version_older_than_runner_version() {
     };
 
     let expected_stderr = format!(
-        "gungraun_runner: Error: gungraun-runner ({runner_version}) is newer than iai-callgrind \
-         ({library_version}). Please update iai-callgrind to '{runner_version}' in your \
-         Cargo.toml file\n"
+        "gungraun_runner: Error: gungraun-runner ({runner_version}) is newer than gungraun \
+         ({library_version}). Please update gungraun to '{runner_version}' in your Cargo.toml \
+         file\n"
     );
 
     common::Runner::new()

@@ -12,9 +12,9 @@ Per default, all benchmark output files are stored under the
 `$WORKSPACE_ROOT/target/iai` directory tree. This home directory can be changed
 with the `IAI_CALLGRIND_HOME` environment variable or the command-line argument
 `--home`. The command-line argument overwrites the value of the environment
-variable. For example to store all files under the `/tmp/iai-callgrind`
-directory you can use `IAI_CALLGRIND_HOME=/tmp/iai-callgrind` or `cargo bench --
---home=/tmp/iai-callgrind`.
+variable. For example to store all files under the `/tmp/gungraun`
+directory you can use `IAI_CALLGRIND_HOME=/tmp/gungraun` or `cargo bench --
+--home=/tmp/gungraun`.
 
 ## Separate targets
 
@@ -37,9 +37,9 @@ For example, assuming the library benchmark file name is `bench_file` in the
 package `my_package`
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 #[library_benchmark]

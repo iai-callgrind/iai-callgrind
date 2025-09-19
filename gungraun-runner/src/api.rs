@@ -106,10 +106,10 @@ pub enum CachegrindMetrics {
     /// groups in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetrics, CachegrindMetric};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::Ir.into(),
@@ -126,10 +126,10 @@ pub enum CachegrindMetrics {
     /// in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::I1mr.into(),
@@ -146,10 +146,10 @@ pub enum CachegrindMetrics {
     /// `--cache-sim`:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::I1MissRate.into(),
@@ -161,14 +161,14 @@ pub enum CachegrindMetrics {
     /// ```
     CacheMissRates,
 
-    /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
+    /// `CacheHits` are gungraun specific and calculated from the metrics produced by
     /// `--cache-sim=yes` in this order:
     ///
     /// ```
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::L1hits.into(),
@@ -181,10 +181,10 @@ pub enum CachegrindMetrics {
     /// The cache hit rates calculated from the [`CachegrindMetrics::CacheHits`]:
     ///
     /// ```
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::L1HitRate.into(),
@@ -194,17 +194,17 @@ pub enum CachegrindMetrics {
     /// ```
     CacheHitRates,
 
-    /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
+    /// All metrics produced by `--cache-sim=yes` including the gungraun specific metrics
     /// [`CachegrindMetric::L1hits`], [`CachegrindMetric::LLhits`], [`CachegrindMetric::RamHits`],
     /// [`CachegrindMetric::TotalRW`], [`CachegrindMetric::EstimatedCycles`],
     /// [`CachegrindMetrics::CacheMissRates`] and [`CachegrindMetrics::CacheHitRates`] in this
     /// order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::Dr.into(),
@@ -222,10 +222,10 @@ pub enum CachegrindMetrics {
     /// The metrics produced by `--branch-sim=yes` in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::Bc.into(),
@@ -239,10 +239,10 @@ pub enum CachegrindMetrics {
     /// All possible [`CachegrindMetric`]s in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// let metrics: Vec<CachegrindMetrics> = vec![
     ///     CachegrindMetric::Ir.into(),
@@ -263,10 +263,10 @@ pub enum CachegrindMetrics {
     /// # Examples
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CachegrindMetric, CachegrindMetrics};
     /// # }
-    /// use iai_callgrind::{CachegrindMetric, CachegrindMetrics};
+    /// use gungraun::{CachegrindMetric, CachegrindMetrics};
     ///
     /// assert_eq!(
     ///     CachegrindMetrics::SingleEvent(CachegrindMetric::Ir),
@@ -290,10 +290,10 @@ pub enum CallgrindMetrics {
     /// groups in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::Ir.into(),
@@ -314,10 +314,10 @@ pub enum CallgrindMetrics {
     /// this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::I1mr.into(),
@@ -334,10 +334,10 @@ pub enum CallgrindMetrics {
     /// `--cache-sim`:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::I1MissRate.into(),
@@ -349,14 +349,14 @@ pub enum CallgrindMetrics {
     /// ```
     CacheMissRates,
 
-    /// `CacheHits` are iai-callgrind specific and calculated from the metrics produced by
+    /// `CacheHits` are gungraun specific and calculated from the metrics produced by
     /// `--cache-sim=yes` in this order:
     ///
     /// ```
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::L1hits.into(),
@@ -369,10 +369,10 @@ pub enum CallgrindMetrics {
     /// The cache hit rates calculated from the [`CallgrindMetrics::CacheHits`]:
     ///
     /// ```
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::L1HitRate.into(),
@@ -382,15 +382,15 @@ pub enum CallgrindMetrics {
     /// ```
     CacheHitRates,
 
-    /// All metrics produced by `--cache-sim=yes` including the iai-callgrind specific metrics
+    /// All metrics produced by `--cache-sim=yes` including the gungraun specific metrics
     /// [`EventKind::L1hits`], [`EventKind::LLhits`], [`EventKind::RamHits`],
     /// [`EventKind::TotalRW`], [`EventKind::EstimatedCycles`] and miss/hit rates in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::Dr.into(),
@@ -408,10 +408,10 @@ pub enum CallgrindMetrics {
     /// The metrics produced by `--cacheuse=yes` in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::AcCost1.into(),
@@ -425,10 +425,10 @@ pub enum CallgrindMetrics {
     /// `SystemCalls` are events of the `--collect-systime=yes` option in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::SysCount.into(),
@@ -441,10 +441,10 @@ pub enum CallgrindMetrics {
     /// The metrics produced by `--branch-sim=yes` in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::Bc.into(),
@@ -458,10 +458,10 @@ pub enum CallgrindMetrics {
     /// All metrics of `--simulate-wb=yes` in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::ILdmr.into(),
@@ -474,10 +474,10 @@ pub enum CallgrindMetrics {
     /// All possible [`EventKind`]s in this order:
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// let metrics: Vec<CallgrindMetrics> = vec![
     ///     EventKind::Ir.into(),
@@ -502,10 +502,10 @@ pub enum CallgrindMetrics {
     /// # Examples
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{CallgrindMetrics, EventKind};
     /// # }
-    /// use iai_callgrind::{CallgrindMetrics, EventKind};
+    /// use gungraun::{CallgrindMetrics, EventKind};
     ///
     /// assert_eq!(
     ///     CallgrindMetrics::SingleEvent(EventKind::Ir),
@@ -574,10 +574,10 @@ pub enum DhatMetrics {
     /// The default group in this order
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
-    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    /// use gungraun::{DhatMetric, DhatMetrics};
     ///
     /// let metrics: Vec<DhatMetrics> = vec![
     ///     DhatMetric::TotalUnits.into(),
@@ -598,10 +598,10 @@ pub enum DhatMetrics {
     /// All [`DhatMetric`]s in this order
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
-    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    /// use gungraun::{DhatMetric, DhatMetrics};
     ///
     /// let metrics: Vec<DhatMetrics> = vec![
     ///     DhatMetrics::Default,
@@ -615,10 +615,10 @@ pub enum DhatMetrics {
     /// A single [`DhatMetric`]
     ///
     /// ```rust
-    /// # pub mod iai_callgrind {
+    /// # pub mod gungraun {
     /// # pub use gungraun_runner::api::{DhatMetrics, DhatMetric};
     /// # }
-    /// use iai_callgrind::{DhatMetric, DhatMetrics};
+    /// use gungraun::{DhatMetric, DhatMetrics};
     ///
     /// assert_eq!(
     ///     DhatMetrics::SingleMetric(DhatMetric::TotalBytes),
@@ -766,7 +766,7 @@ pub enum EventKind {
 /// # Examples
 ///
 /// ```rust,ignore
-/// use iai_callgrind::{main, BinaryBenchmarkConfig, ExitWith};
+/// use gungraun::{main, BinaryBenchmarkConfig, ExitWith};
 ///
 /// # fn main() {
 /// main!(

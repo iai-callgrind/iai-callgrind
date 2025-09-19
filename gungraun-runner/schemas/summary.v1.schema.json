@@ -105,7 +105,7 @@
       }
     },
     "BaselineKind": {
-      "description": "The `BaselineKind` describing the baseline\n\nCurrently, iai-callgrind can only compare callgrind output with `.old` files.",
+      "description": "The `BaselineKind` describing the baseline\n\nCurrently, gungraun can only compare callgrind output with `.old` files.",
       "oneOf": [
         {
           "description": "Compare new against `*.old` output files",

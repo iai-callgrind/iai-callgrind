@@ -70,9 +70,9 @@ itself with the `Dhat` struct in `LibraryBenchmarkConfig::tool`. Here, globally
 in the `main!` macro:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     Dhat
 };
@@ -131,9 +131,9 @@ both whatever you think is appropriate) to ensure `bubble_sort` is not getting
 worse than that.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     Dhat, DhatMetric
 };
@@ -186,10 +186,10 @@ work. The inner workings aren't important but this description should be enough
 to understand the basic idea.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     ValgrindTool,
 };
@@ -314,10 +314,10 @@ doesn't have to be specified) and additionally all threads which execute the
 `benchmark_tests::find_primes` function.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     ValgrindTool, Dhat
 };
@@ -360,10 +360,10 @@ sugar for disabling the entry point with `EntryPoint::None` and specifying a
 frame with `Dhat::frames`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod benchmark_tests { pub fn find_primes_multi_thread (_: u64) -> Vec<u64> { vec![] } }
 use std::hint::black_box;
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     ValgrindTool, Dhat, EntryPoint
 };

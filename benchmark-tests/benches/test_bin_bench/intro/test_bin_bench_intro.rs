@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Pipe, Sandbox, Stdin,
     Stdio,
 };
@@ -27,12 +27,12 @@ const PIPE_EXE: &str = env!("CARGO_BIN_EXE_pipe");
 
 // The most simple usage of the `#[binary_benchmark]` macro. No `#[bench]` or `#[benches]` required.
 // In contrast to library benchmarks, all functions annotated with `#[binary_benchmark]` need to
-// return an `iai_callgrind::Command`.
+// return an `gungraun::Command`.
 #[binary_benchmark]
-fn simple_bench() -> iai_callgrind::Command {
+fn simple_bench() -> gungraun::Command {
     // Within the `simple_bench` function we're building the `Command`, but nothing's getting
     // executed, yet.
-    iai_callgrind::Command::new(ECHO_EXE)
+    gungraun::Command::new(ECHO_EXE)
 }
 
 // Let's take it a step further and make use of the `#[bench]` attribute. As in library benchmarks
@@ -45,8 +45,8 @@ fn simple_bench() -> iai_callgrind::Command {
 // Specifying multiple inputs at once with `#[benches]` is also possible. Each argument in the list
 // will be passed to the function `bench_with_bench` and produces a single benchmark
 #[benches::multiple("aaaa", "aaaaa")]
-fn bench_with_bench(arg: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO_EXE).arg(arg).build()
+fn bench_with_bench(arg: &str) -> gungraun::Command {
+    gungraun::Command::new(ECHO_EXE).arg(arg).build()
 }
 
 // The first group. As in library benchmarks, specify all benchmark functions you want to put into
@@ -88,8 +88,8 @@ fn create_file_with_content(path: &str, content: &str) {
 // Or multiple benches at once. The alternate syntax for `args` in the `#[benches]` attribute is
 // `args = [(...), (...), ...]` (An array of tuples)
 #[benches::multiple(args = [("aaa.txt", "aaa"), ("aaaa.txt", "aaa")], setup = create_file_with_content)]
-fn bench_with_setup(path: &str, content: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(READ_FILE_EXE)
+fn bench_with_setup(path: &str, content: &str) -> gungraun::Command {
+    gungraun::Command::new(READ_FILE_EXE)
         .args([path, content])
         .build()
 }
@@ -115,19 +115,19 @@ fn setup_file(line: String) {
 // function. Here, we also pass the line to the `setup_file` function. The file has to be encoded in
 // valid UTF-8.
 #[benches::file(file = "benchmark-tests/benches/fixtures/file_content.inputs", setup = setup_file)]
-fn benches_from_file(line: String) -> iai_callgrind::Command {
+fn benches_from_file(line: String) -> gungraun::Command {
     // As opposed to library benchmarks, we can put any code in this function, since this function
-    // is evaluated only once when iai-callgrind collects all benchmarks. The function's sole
+    // is evaluated only once when gungraun collects all benchmarks. The function's sole
     // purpose is to __build__ the `Command` which is getting executed later.
     let (path, content) = split_line(&line);
-    iai_callgrind::Command::new(READ_FILE_EXE)
+    gungraun::Command::new(READ_FILE_EXE)
         .args([path, content])
         .build()
 }
 
 // Nothing in this example forces us to create another group for the `read-file` binary benchmarks,
 // but we would like to show the possibility of doing so. The different groups are also visible in
-// the resulting output directories of `iai-callgrind`. Unless otherwise specified, the output files
+// the resulting output directories of `gungraun`. Unless otherwise specified, the output files
 // are stored in the `$WORKSPACE_ROOT/target/iai/$BENCHMARK_FILE/$GROUP/$FUNCTION_NAME.$BENCH_ID`
 // directory hierarchy. The individual groups therefore save their files in a separate directory,
 // and the benchmark output also displays the different groups in different ways. An important
@@ -160,8 +160,8 @@ fn check_output(expected: &str) {
 #[bench::bar("bar")]
 // We need the `args` from the benches only for `setup` and `teardown` but not in the function, so
 // we can ignore them.
-fn bench_pipe(_: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(PIPE_EXE)
+fn bench_pipe(_: &str) -> gungraun::Command {
+    gungraun::Command::new(PIPE_EXE)
         // Here, we configure the output of the `setup` function to `Stdout` so that it is the
         // `Stdin` of the `Command`. This changes the execution order of `setup` and `Command`.
         // Usually, `setup` is executed, then `Command`, then `teardown`. Now, `setup` and `Command`

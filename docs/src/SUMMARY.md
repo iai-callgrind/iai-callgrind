@@ -7,7 +7,7 @@
 # Installation
 
 - [Prerequisites](./installation/prerequisites.md)
-- [Gungraun](./installation/iai_callgrind.md)
+- [Gungraun](./installation/gungraun.md)
 
 # Benchmarks
 

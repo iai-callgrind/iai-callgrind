@@ -38,7 +38,7 @@
 ,"ftbl":
  ["[root]"
  ,"0x48C87A8: malloc (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)"
- ,"0x40160D4: test_dhat::tool::__iai_callgrind_wrapper_mod::dhat (test_dhat.rs:43)"
+ ,"0x40160D4: test_dhat::tool::__gungraun_wrapper_mod::dhat (test_dhat.rs:43)"
  ,"0x4014455: test_dhat::tool::with_entry_point (test_dhat.rs:9)"
  ,"0x401299B: test_dhat::main (macros.rs:481)"
  ,"0x48CFC13: calloc (in /usr/lib/valgrind/vgpreload_dhat-amd64-linux.so)"

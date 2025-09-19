@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 
 use client_request_tests::MARKER;
-use iai_callgrind::{client_requests, cstring, valgrind_printf, valgrind_println_unchecked};
+use gungraun::{client_requests, cstring, valgrind_printf, valgrind_println_unchecked};
 
 fn do_work(start: i32) -> i32 {
     let mut sum = start;

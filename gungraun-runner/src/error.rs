@@ -77,28 +77,28 @@ impl Display for Error {
                     f,
                     "Failed to initialize gungraun-runner: {message}\n\nDetected version of \
                      gungraun-runner is {runner_version}. This error can be caused by a version \
-                     mismatch between iai-callgrind and gungraun-runner. If you updated the \
-                     library (iai-callgrind) in your Cargo.toml file, the binary \
-                     (gungraun-runner) needs to be updated to the same version and vice versa."
+                     mismatch between gungraun and gungraun-runner. If you updated the library \
+                     (gungraun) in your Cargo.toml file, the binary (gungraun-runner) needs to be \
+                     updated to the same version and vice versa."
                 )
             }
             Self::VersionMismatch(cmp, runner_version, library_version) => match cmp {
                 Cmp::Lt => write!(
                     f,
-                    "gungraun-runner ({runner_version}) is older than iai-callgrind \
+                    "gungraun-runner ({runner_version}) is older than gungraun \
                      ({library_version}). Please update gungraun-runner by calling 'cargo install \
                      --version {library_version} gungraun-runner'"
                 ),
                 Cmp::Gt => write!(
                     f,
-                    "gungraun-runner ({runner_version}) is newer than iai-callgrind \
-                     ({library_version}). Please update iai-callgrind to '{runner_version}' in \
-                     your Cargo.toml file"
+                    "gungraun-runner ({runner_version}) is newer than gungraun \
+                     ({library_version}). Please update gungraun to '{runner_version}' in your \
+                     Cargo.toml file"
                 ),
                 Cmp::Ne => write!(
                     f,
-                    "No version information found for iai-callgrind but gungraun-runner \
-                     ({runner_version}) is >= '0.3.0'. Please update iai-callgrind to \
+                    "No version information found for gungraun but gungraun-runner \
+                     ({runner_version}) is >= '0.3.0'. Please update gungraun to \
                      '{runner_version}' in your Cargo.toml file"
                 ),
                 _ => unreachable!(),

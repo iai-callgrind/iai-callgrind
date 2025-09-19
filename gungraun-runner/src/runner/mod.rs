@@ -49,7 +49,7 @@ use crate::api::{BinaryBenchmarkGroups, LibraryBenchmarkGroups};
 use crate::error::Error;
 
 /// The default toggle/frame used by the [`crate::api::EntryPoint::Default`]
-pub const DEFAULT_TOGGLE: &str = "*::__iai_callgrind_wrapper_mod::*";
+pub const DEFAULT_TOGGLE: &str = "*::__gungraun_wrapper_mod::*";
 
 /// Execute post benchmark run actions like printing the summary line with regressions
 #[derive(Debug)]
@@ -59,7 +59,7 @@ struct PostRun {
     output_format_kind: OutputFormatKind,
 }
 
-/// The arguments sent by the iai-callgrind benchmarking harness
+/// The arguments sent by the gungraun benchmarking harness
 ///
 /// These are not the user arguments of the `cargo bench ... -- ARGS` command.
 #[derive(Debug)]
@@ -190,7 +190,7 @@ where
             // are equal here
             _ => {}
         },
-        // iai-callgrind versions before 0.3.0 don't submit the version
+        // gungraun versions before 0.3.0 don't submit the version
         Err(()) => {
             return Err(Error::VersionMismatch(
                 version_compare::Cmp::Ne,
@@ -204,9 +204,9 @@ where
     Ok(())
 }
 
-/// Method to read, decode and deserialize the data sent by iai-callgrind
+/// Method to read, decode and deserialize the data sent by gungraun
 ///
-/// iai-callgrind uses elements from the [`crate::api`], so the runner can understand which elements
+/// gungraun uses elements from the [`crate::api`], so the runner can understand which elements
 /// can be received by this method
 pub fn receive_benchmark<T>(num_bytes: usize) -> Result<T>
 where

@@ -17,7 +17,7 @@ git-repository-url = "https://github.com/gungraun/gungraun"
 edit-url-template = "https://github.com/gungraun/gungraun/master/docs/{path}"
 additional-css = ["css/my.css", "css/dropdown.css"]
 additional-js = ["js/dropdown.js"]
-site-url = "/iai-callgrind/"
+site-url = "/gungraun/"
 
 # https://github.com/Michael-F-Bryan/mdbook-linkcheck
 [output.linkcheck]

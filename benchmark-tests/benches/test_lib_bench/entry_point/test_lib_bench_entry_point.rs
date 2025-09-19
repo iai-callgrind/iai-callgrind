@@ -1,13 +1,13 @@
 use std::hint::black_box;
 
 use benchmark_tests::assert::Assert;
-use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
-use gungraun_runner::runner::metrics::Metric;
-use gungraun_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint, EventKind,
     FlamegraphConfig, LibraryBenchmarkConfig, ValgrindTool,
 };
+use gungraun_runner::runner::callgrind::hashmap_parser::SourcePath;
+use gungraun_runner::runner::metrics::Metric;
+use gungraun_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 
 #[inline(never)]
 fn nested() -> u64 {
@@ -101,7 +101,7 @@ fn assert_default() {
                     .iter()
                     .find_map(|(k, v)| {
                         (
-                            k.func == "test_lib_bench_entry_point::bench_lib::__iai_callgrind_wrapper_mod::bench_lib" &&
+                            k.func == "test_lib_bench_entry_point::bench_lib::__gungraun_wrapper_mod::bench_lib" &&
                             k.file == Some(SourcePath::Relative(file!().into()))
                         )
                         .then(|| v.metrics.clone())

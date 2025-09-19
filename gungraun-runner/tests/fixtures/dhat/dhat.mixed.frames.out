@@ -29,6 +29,6 @@
  ,"0x40147EB: main (in /some/path/bench-bb025b17fd65eb7d)"
  ,"0x403D8F2: with_capacity_in<std::ffi::os_str::OsString, alloc::alloc::Global> (mod.rs:190)"
  ,"0x403C263: catch_unwind<&(dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe), i32> (panic.rs:359)"
- ,"0x40118C4: test_lib_bench_default_tool::default_tool::__iai_callgrind_wrapper_mod::default_tool (test_lib_bench_default_tool.rs:43)"
+ ,"0x40118C4: test_lib_bench_default_tool::default_tool::__gungraun_wrapper_mod::default_tool (test_lib_bench_default_tool.rs:43)"
  ]
 }

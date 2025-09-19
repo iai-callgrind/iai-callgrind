@@ -144,7 +144,7 @@ jobs:
         run: |
           if grep -q '^test ui \.\.\. FAILED$' test.output; then
             TRYBUILD=overwrite cargo test ${{ matrix.ui_tests }} ui
-            git diff iai-callgrind/tests/ui
+            git diff gungraun/tests/ui
           fi
           exit 1
       - name: Check summary.json schema is up-to-date
@@ -157,7 +157,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ !cancelled() }}
         with:
-          name: iai-callgrind-benchmarks-${{ matrix.toolchain }}
+          name: gungraun-benchmarks-${{ matrix.toolchain }}
           path: "target/iai"
 
   client_requests:
@@ -243,8 +243,8 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@nightly
       - uses: Swatinem/rust-cache@v2
-      - name: Build iai-callgrind without valgrind headers
-        run: cargo build --package iai-callgrind --features client_requests_defs --release
+      - name: Build gungraun without valgrind headers
+        run: cargo build --package gungraun --features client_requests_defs --release
       - name: Run doc tests
         run: cargo test --all-features --doc
       - name: Check Documentation

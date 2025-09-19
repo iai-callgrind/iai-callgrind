@@ -1,0 +1,183 @@
+error: The provided file 'gungraun/tests/fixtures/empty.fix' was empty
+ --> tests/ui/test_file_parameter_when_invalid.rs:7:29
+  |
+7 |     #[benches::my_id(file = "gungraun/tests/fixtures/empty.fix")]
+  |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: The provided file 'gungraun/tests/fixtures/empty.fix' was empty
+  --> tests/ui/test_file_parameter_when_invalid.rs:13:29
+   |
+13 |     #[benches::my_id(file = "gungraun/tests/fixtures/empty.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error opening '$WORKSPACE/target/tests/trybuild/gungraun/gungraun/tests/fixtures/does_not_exist': No such file or directory (os error 2)
+  --> tests/ui/test_file_parameter_when_invalid.rs:23:29
+   |
+23 |     #[benches::my_id(file = "gungraun/tests/fixtures/does_not_exist")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error opening '$WORKSPACE/target/tests/trybuild/gungraun/gungraun/tests/fixtures/does_not_exist': No such file or directory (os error 2)
+  --> tests/ui/test_file_parameter_when_invalid.rs:29:29
+   |
+29 |     #[benches::my_id(file = "gungraun/tests/fixtures/does_not_exist")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error reading line 1 in file '$WORKSPACE/target/tests/trybuild/gungraun/gungraun/tests/fixtures/invalid-utf8.fix': stream did not contain valid UTF-8
+  --> tests/ui/test_file_parameter_when_invalid.rs:39:29
+   |
+39 |     #[benches::my_id(file = "gungraun/tests/fixtures/invalid-utf8.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Error reading line 1 in file '$WORKSPACE/target/tests/trybuild/gungraun/gungraun/tests/fixtures/invalid-utf8.fix': stream did not contain valid UTF-8
+  --> tests/ui/test_file_parameter_when_invalid.rs:45:29
+   |
+45 |     #[benches::my_id(file = "gungraun/tests/fixtures/invalid-utf8.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Only one parameter of `file`, `args` or `iter` can be present
+  --> tests/ui/test_file_parameter_when_invalid.rs:55:16
+   |
+55 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix", args = [("valid_arg".to_owned()), "another".to_owned()])]
+   |                ^^^^^
+
+error: Only one parameter of `file`, `args` or `iter` can be present
+  --> tests/ui/test_file_parameter_when_invalid.rs:61:16
+   |
+61 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix", args = [("valid_arg".to_owned()), "another".to_owned()])]
+   |                ^^^^^
+
+error: Invalid value for `file`
+
+         = help: The `file` argument needs a literal string containing the path to an existing file at compile time
+         = note: `file = "benches/some_fixture"`
+
+  --> tests/ui/test_file_parameter_when_invalid.rs:87:29
+   |
+87 |     #[benches::my_id(file = ("gungraun/tests/fixtures/numbers.fix", String))]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Invalid value for `file`
+
+         = help: The `file` argument needs a literal string containing the path to an existing file at compile time
+         = note: `file = "benches/some_fixture"`
+
+  --> tests/ui/test_file_parameter_when_invalid.rs:93:29
+   |
+93 |     #[benches::my_id(file = ("gungraun/tests/fixtures/numbers.fix", String))]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Invalid value for `file`
+
+         = help: The `file` argument needs a literal string containing the path to an existing file at compile time
+         = note: `file = "benches/some_fixture"`
+
+   --> tests/ui/test_file_parameter_when_invalid.rs:103:29
+    |
+103 |     #[benches::my_id(file = String::from("gungraun/tests/fixtures/numbers.fix"))]
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: Invalid value for `file`
+
+         = help: The `file` argument needs a literal string containing the path to an existing file at compile time
+         = note: `file = "benches/some_fixture"`
+
+   --> tests/ui/test_file_parameter_when_invalid.rs:109:29
+    |
+109 |     #[benches::my_id(file = String::from("gungraun/tests/fixtures/numbers.fix"))]
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: The benchmark function should take exactly one `String` argument if the file parameter is present
+
+         = help: fn benchmark_function(line: String) ...
+
+   --> tests/ui/test_file_parameter_when_invalid.rs:119:29
+    |
+119 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix")]
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: The benchmark function should take exactly one `String` argument if the file parameter is present
+
+         = help: fn benchmark_function(line: String) ...
+
+   --> tests/ui/test_file_parameter_when_invalid.rs:125:29
+    |
+125 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix")]
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_file_parameter_when_invalid.rs:71:29
+   |
+71 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |                             |
+   |                             expected `u64`, found `String`
+   |                             arguments to this function are incorrect
+   |
+help: the return type of this call is `String` due to the type of the argument passed
+  --> tests/ui/test_file_parameter_when_invalid.rs:71:29
+   |
+71 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ this argument influences the return type of `std`
+note: function defined here
+  --> $RUST/core/src/hint.rs
+   |
+   | pub const fn black_box<T>(dummy: T) -> T {
+   |              ^^^^^^^^^
+
+error[E0308]: mismatched types
+  --> tests/ui/test_file_parameter_when_invalid.rs:77:29
+   |
+77 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix")]
+   |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
+78 |     fn bench_binary(value: u64) -> String {
+   |        ------------ arguments to this function are incorrect
+   |
+note: function defined here
+  --> tests/ui/test_file_parameter_when_invalid.rs:78:8
+   |
+78 |     fn bench_binary(value: u64) -> String {
+   |        ^^^^^^^^^^^^ ----------
+
+error[E0308]: mismatched types
+  --> tests/ui/test_file_parameter_when_invalid.rs:76:5
+   |
+76 |     #[binary_benchmark]
+   |     ^^^^^^^^^^^^^^^^^^^
+   |     |
+   |     expected `Command`, found `String`
+   |     expected `gungraun::Command` because of return type
+   |
+   = note: this error originates in the attribute macro `binary_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> tests/ui/test_file_parameter_when_invalid.rs:138:5
+    |
+138 |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^- help: try using a conversion method: `.to_string()`
+    |     |
+    |     expected `String`, found `u64`
+    |     arguments to this function are incorrect
+    |
+note: function defined here
+   --> tests/ui/test_file_parameter_when_invalid.rs:138:5
+    |
+138 |     #[library_benchmark]
+    |     ^^^^^^^^^^^^^^^^^^^^
+139 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix", setup = my_setup)]
+140 |     fn bench_library(value: String) -> u64 {
+    |                      -------------
+    = note: this error originates in the attribute macro `library_benchmark` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+   --> tests/ui/test_file_parameter_when_invalid.rs:145:29
+    |
+145 |     #[benches::my_id(file = "gungraun/tests/fixtures/numbers.fix", setup = { my_setup("some string".to_owned()); })]
+    |                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `u64`, found `String`
+146 |     fn bench_binary(value: u64) -> gungraun::Command {
+    |        ------------ arguments to this function are incorrect
+    |
+note: function defined here
+   --> tests/ui/test_file_parameter_when_invalid.rs:146:8
+    |
+146 |     fn bench_binary(value: u64) -> gungraun::Command {
+    |        ^^^^^^^^^^^^ ----------

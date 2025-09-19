@@ -6,14 +6,14 @@ as positional argument. This first example shows the basic usage of the
 high-level api with the `#[binary_benchmark]` attribute:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 
 #[binary_benchmark]
 #[bench::some_id("foo.txt")]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }
@@ -74,16 +74,16 @@ api](./low_level.md). Here, pretty much the same as the above high-level usage
 but written in the low-level api:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{BinaryBenchmark, Bench, binary_benchmark_group, main};
+use gungraun::{BinaryBenchmark, Bench, binary_benchmark_group, main};
 
 binary_benchmark_group!(
     name = my_group;
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group.binary_benchmark(BinaryBenchmark::new("bench_binary")
             .bench(Bench::new("some_id")
-                .command(iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+                .command(gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
                     .arg("foo.txt")
                     .build()
                 )

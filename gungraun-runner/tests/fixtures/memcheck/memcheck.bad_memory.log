@@ -17,7 +17,7 @@
 ==00:00:00:00.773 1411024==    by 0x11BE8F: exchange_malloc (alloc.rs:332)
 ==00:00:00:00.773 1411024==    by 0x11BE8F: new<alloc::rc::RcBox<core::cell::RefCell<test_lib_bench_tools::Left>>> (boxed.rs:260)
 ==00:00:00:00.773 1411024==    by 0x11BE8F: new<core::cell::RefCell<test_lib_bench_tools::Left>> (rc.rs:402)
-==00:00:00:00.773 1411024==    by 0x11BE8F: test_lib_bench_tools::bad_memory::__iai_callgrind_wrapper_mod::bad_memory (test_lib_bench_tools.rs:79)
+==00:00:00:00.773 1411024==    by 0x11BE8F: test_lib_bench_tools::bad_memory::__gungraun_wrapper_mod::bad_memory (test_lib_bench_tools.rs:79)
 ==00:00:00:00.773 1411024==    by 0x11CFA5: test_lib_bench_tools::bad_memory::wrapper (test_lib_bench_tools.rs:68)
 ==00:00:00:00.773 1411024==    by 0x118035: test_lib_bench_tools::main (macros.rs:739)
 ==00:00:00:00.773 1411024==    by 0x11D0D2: call_once<fn(), ()> (function.rs:250)

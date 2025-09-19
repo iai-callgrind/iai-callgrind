@@ -34,9 +34,9 @@ specifying the output format for example at top-level for all benchmarks in the
 same file in the `main!` macro:
 
 ```rust
-# extern crate iai_callgrind;
-# use iai_callgrind::{library_benchmark, library_benchmark_group};
-use iai_callgrind::{main, LibraryBenchmarkConfig, CallgrindMetrics, Callgrind};
+# extern crate gungraun;
+# use gungraun::{library_benchmark, library_benchmark_group};
+use gungraun::{main, LibraryBenchmarkConfig, CallgrindMetrics, Callgrind};
 
 # #[library_benchmark] fn bench() {}
 # library_benchmark_group!(name = my_group; benchmarks = bench);
@@ -99,11 +99,11 @@ Benchmarks which show variances in the output of the metrics can be configured
 to tolerate a specific margin in the benchmark output:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 use std::collections::HashMap;
 use std::hint::black_box;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig, OutputFormat,
 };
 

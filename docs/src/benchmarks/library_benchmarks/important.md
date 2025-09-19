@@ -24,8 +24,8 @@ on. This adds run time. If you don't need the cache metrics and estimation of
 cycles, you can easily switch cache simulation off for example with:
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{LibraryBenchmarkConfig, Callgrind};
+# extern crate gungraun;
+use gungraun::{LibraryBenchmarkConfig, Callgrind};
 
 LibraryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 ```
@@ -33,9 +33,9 @@ LibraryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]))
 To switch off cache simulation for all benchmarks in the same file:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn fibonacci(a: u64) -> u64 { a } }
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     Callgrind
 };

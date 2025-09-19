@@ -67,7 +67,7 @@ pub struct Config {
     pub meta: Metadata,
     /// The module path of the benchmark file
     pub module_path: ModulePath,
-    /// The package directory of the package in which `iai-callgrind` (not the runner) is used
+    /// The package directory of the package in which `gungraun` (not the runner) is used
     pub package_dir: PathBuf,
 }
 

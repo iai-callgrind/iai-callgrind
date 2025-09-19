@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 fn setup_to_stdout(value: u64) -> u64 {
     println!("setup: stdout: {value}");

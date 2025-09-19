@@ -32,21 +32,21 @@ To see all macros in action have a look at the example below.
 ## The return value of the benchmark function
 
 The maybe most important difference is, that the `#[binary_benchmark]` annotated
-function always needs to return an `iai_callgrind::Command`. Note this function
+function always needs to return an `gungraun::Command`. Note this function
 builds the command which is going to be benchmarked but doesn't execute it,
 yet. So, the code in this function does not attribute to the event counts of the
 actual benchmark.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 use std::path::PathBuf;
 
 #[binary_benchmark]
 #[bench::foo("foo.txt")]
 #[bench::bar("bar.json")]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
+fn bench_binary(path: &str) -> gungraun::Command {
     // We can put any code in this function which is needed to configure and
     // build the `Command`.
     let path = PathBuf::from(path);
@@ -56,11 +56,11 @@ fn bench_binary(path: &str) -> iai_callgrind::Command {
     // cases, the `Stdout` of the `Command` is redirected to a `File` with the
     // same name as the input `path` but with the extension `out`.
     let stdout = if path.extension().unwrap() == "txt" {
-        iai_callgrind::Stdio::Inherit
+        gungraun::Stdio::Inherit
     } else {
-        iai_callgrind::Stdio::File(path.with_extension("out"))
+        gungraun::Stdio::File(path.with_extension("out"))
     };
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .stdout(stdout)
         .arg(path)
         .build()
@@ -79,9 +79,9 @@ Since we can put any code building the `Command` in the function itself, the
 work differently.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 
 fn create_file() {
     std::fs::write("foo.txt", "some content").unwrap();
@@ -89,8 +89,8 @@ fn create_file() {
 
 #[binary_benchmark]
 #[bench::foo(args = ("foo.txt"), setup = create_file())]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }
@@ -113,9 +113,9 @@ It's possible to use the same arguments for `setup` (`teardown`) __and__ the
 library benchmarks:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 
 fn create_file(path: &str) {
     std::fs::write(path, "some content").unwrap();
@@ -132,8 +132,8 @@ fn delete_file(path: &str) {
 #[bench::foo(args = ("foo.txt"), setup = create_file)]
 // Same for `teardown`
 #[bench::bar(args = ("bar.txt"), setup = create_file, teardown = delete_file)]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }

@@ -14,9 +14,9 @@ To actually see the collected metrics in the terminal output for all threads
 and/or subprocesses you can switch on `OutputFormat::show_intermediate`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: u64) -> Vec<u64> { vec![]} }
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     OutputFormat
 };
@@ -64,8 +64,8 @@ code below to show the different customization options assuming this code lives
 in a benchmark file `benches/lib_bench_threads.rs`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{
+# extern crate gungraun;
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     OutputFormat
 };
@@ -179,9 +179,9 @@ At a first glance, setting a toggle to the function in the thread seems to be
 easiest way and can be done like so:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -302,9 +302,9 @@ Another way to get the thread metrics is to set `--collect-atstart=yes` and turn
 off the `EntryPoint`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -384,8 +384,8 @@ Using the callgrind client request, we adjust the threads in the
 
 ```rust
 # fn find_primes(_a: u64, _b: u64) -> Vec<u64> { vec![] }
-# extern crate iai_callgrind;
-use iai_callgrind::client_requests::callgrind;
+# extern crate gungraun;
+use gungraun::client_requests::callgrind;
 
 /// Return the prime numbers in the range `0..(num_threads * 10000)`
 pub fn find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
@@ -452,7 +452,7 @@ threads:
 Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Using the client request toggles is very flexible since you can put the
-`iai_callgrind::client_requests::callgrind::toggle_collect` instructions
+`gungraun::client_requests::callgrind::toggle_collect` instructions
 anywhere in the threads. In this example, we just have a single function in the
 thread, but if your threads consist of more than just a single function, you can
 easily exclude uninteresting parts from the final measurements.
@@ -461,9 +461,9 @@ If you want to prevent the code of the main thread from being measured, you can
 use the following:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -568,14 +568,14 @@ the benchmark and library code to show the different options assuming this code
 is stored in a benchmark file `benches/lib_bench_subprocess.rs`
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 use std::hint::black_box;
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     OutputFormat,
 };
@@ -660,7 +660,7 @@ for the `--toggle-collect` argument so the following adaption to the above
 benchmark will just work:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib {
 # use std::{io, path::Path, process::ExitStatus};
 # pub fn cat(_: &Path) -> io::Result<ExitStatus> {
@@ -671,7 +671,7 @@ benchmark will just work:
 # use std::io;
 # use std::path::PathBuf;
 # use std::process::ExitStatus;
-# use iai_callgrind::{
+# use gungraun::{
 #    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
 #    OutputFormat, Callgrind
 # };
@@ -724,10 +724,10 @@ Naturally, client requests can also be used to measure subprocesses. The
 callgrind client requests are added to the code of the `cat` binary:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 use std::fs::File;
 use std::io::{copy, stdout, BufReader, BufWriter, Write};
-use iai_callgrind::client_requests::callgrind;
+use gungraun::client_requests::callgrind;
 
 # fn main() {
 fn main() {
@@ -754,7 +754,7 @@ collected metrics. The benchmark itself is reverted to its original state
 without the toggle:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib {
 # use std::{io, path::Path, process::ExitStatus};
 # pub fn cat(_: &Path) -> io::Result<ExitStatus> {
@@ -765,7 +765,7 @@ without the toggle:
 # use std::io;
 # use std::path::PathBuf;
 # use std::process::ExitStatus;
-# use iai_callgrind::{
+# use gungraun::{
 #    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
 #    OutputFormat,
 # };

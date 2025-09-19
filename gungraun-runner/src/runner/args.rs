@@ -65,7 +65,7 @@ pub enum TruncateDescription {
 /// The command line arguments the user provided after `--` when running cargo bench
 ///
 /// These arguments are not the command line arguments passed to `gungraun-runner`. We collect
-/// the command line arguments in the `iai-callgrind::main!` macro without the binary as first
+/// the command line arguments in the `gungraun::main!` macro without the binary as first
 /// argument, that's why `no_binary_name` is set to `true`.
 #[allow(clippy::partial_pub_fields, clippy::struct_excessive_bools)]
 #[derive(Parser, Debug, Clone)]
@@ -414,9 +414,9 @@ pub struct CommandLineArgs {
     /// This argument matches the tool case-insensitive. Note that using cachegrind with this
     /// option to benchmark library functions needs adjustments to the benchmarking functions with
     /// client-requests to measure the counts correctly. If you want to switch permanently to
-    /// cachegrind, it is usually better to activate the `cachegrind` feature of iai-callgrind in
+    /// cachegrind, it is usually better to activate the `cachegrind` feature of gungraun in
     /// your Cargo.toml. However, setting a tool with this option overrides cachegrind set with the
-    /// iai-callgrind feature. See the guide for all details.
+    /// gungraun feature. See the guide for all details.
     #[arg(
         long = "default-tool",
         num_args = 1,
@@ -597,7 +597,7 @@ pub struct CommandLineArgs {
     /// output of helgrind. The `group` and `event` are the same as for `--memcheck-metrics`.
     ///
     /// See `--callgrind-metrics` for more details and
-    /// <https://docs.rs/iai-callgrind/latest/iai_callgrind/enum.ErrorMetric.html> for valid error
+    /// <https://docs.rs/gungraun/latest/iai_callgrind/enum.ErrorMetric.html> for valid error
     /// metrics.
     ///
     /// Examples:
@@ -616,7 +616,7 @@ pub struct CommandLineArgs {
     pub helgrind_metrics: Option<IndexSet<ErrorMetric>>,
 
     #[rustfmt::skip]
-    /// Specify the home directory of iai-callgrind benchmark output files
+    /// Specify the home directory of gungraun benchmark output files
     ///
     /// All output files are per default stored under the `$PROJECT_ROOT/target/iai` directory.
     /// This option lets you customize this home directory, and it will be created if it doesn't
@@ -634,7 +634,7 @@ pub struct CommandLineArgs {
     ///
     /// The output format is intended to be the same as the output format of the libtest harness.
     /// However, future changes of the output format by cargo might not be incorporated into
-    /// iai-callgrind. As a consequence, it is not considered safe to rely on the output in
+    /// gungraun. As a consequence, it is not considered safe to rely on the output in
     /// scripts.
     #[arg(
         long = "list",
@@ -850,9 +850,9 @@ pub struct CommandLineArgs {
     pub save_summary: Option<SummaryFormat>,
 
     #[rustfmt::skip]
-    /// Separate iai-callgrind benchmark output files by target
+    /// Separate gungraun benchmark output files by target
     ///
-    /// The default output path for files created by iai-callgrind and valgrind during the
+    /// The default output path for files created by gungraun and valgrind during the
     /// benchmark is
     ///
     /// `target/iai/$PACKAGE_NAME/$BENCHMARK_FILE/$GROUP/$BENCH_FUNCTION.$BENCH_ID`.

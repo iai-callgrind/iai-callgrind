@@ -44,7 +44,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -111,7 +111,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -152,7 +152,7 @@ impl CargoMetadata {
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
 /// # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -195,7 +195,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
@@ -245,7 +245,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -276,7 +276,7 @@ impl CargoMetadata {
 ///
 /// ```rust,ignore
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub struct LibraryBenchmarkConfig {}
 /// # pub mod __internal {
 /// # pub enum InternalLibFunctionKind { None, Default(fn()) }
@@ -305,7 +305,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -342,7 +342,7 @@ impl CargoMetadata {
 ///
 /// ```rust
 /// # use gungraun_macros::library_benchmark;
-/// # mod iai_callgrind {
+/// # mod gungraun {
 /// # pub mod client_requests { pub mod cachegrind {
 /// # pub fn start_instrumentation() {}
 /// # pub fn stop_instrumentation() {}
@@ -415,7 +415,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
     }
 }
 
-/// Used to annotate functions building the to be benchmarked `iai_callgrind::Command`
+/// Used to annotate functions building the to be benchmarked `gungraun::Command`
 ///
 /// This macro works almost the same way as the [`macro@crate::library_benchmark`] attribute. Please
 /// see there for the basic usage.
@@ -424,7 +424,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 ///
 /// Any `config` parameter takes a `BinaryBenchmarkConfig` instead of a `LibraryBenchmarkConfig`.
 /// All functions annotated with the `#[binary_benchmark]` attribute need to return an
-/// `iai_callgrind::Command`. Also, the annotated function itself is not benchmarked. Instead, this
+/// `gungraun::Command`. Also, the annotated function itself is not benchmarked. Instead, this
 /// function serves the purpose of a builder for the `Command` which is getting benchmarked.
 /// So, any code within this function is evaluated only once when all `Commands` in this benchmark
 /// file are collected and built. You can put any code in the function which is necessary to build
@@ -443,7 +443,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// ```rust
 /// # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 /// # use gungraun_macros::binary_benchmark;
-/// # pub mod iai_callgrind {
+/// # pub mod gungraun {
 /// # use std::path::PathBuf;
 /// # #[derive(Clone)]
 /// # pub struct Command {}
@@ -468,8 +468,8 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// #     { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { BinaryBenchmarkConfig {}}}
 /// # pub mod __internal {
 /// # use super::*;
-/// # use crate::iai_callgrind;
-/// # pub enum InternalBinFunctionKind { None, Default(fn() -> iai_callgrind::Command) }
+/// # use crate::gungraun;
+/// # pub enum InternalBinFunctionKind { None, Default(fn() -> gungraun::Command) }
 /// # pub enum InternalBinAssistantKind { None, Default(fn()) }
 /// # pub struct InternalMacroBinBench {
 /// #   pub id_display: Option<&'static str>,
@@ -484,7 +484,7 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 /// #    { fn from(_value: &mut BinaryBenchmarkConfig) -> Self { InternalBinaryBenchmarkConfig {}} }
 /// # }
 /// # }
-/// use iai_callgrind::{BinaryBenchmarkConfig, Sandbox};
+/// use gungraun::{BinaryBenchmarkConfig, Sandbox};
 /// use std::path::PathBuf;
 ///
 /// // In binary benchmarks there's no need to return a value from the setup function
@@ -527,18 +527,18 @@ pub fn library_benchmark(args: TokenStream, input: TokenStream) -> TokenStream {
 ///             .fixtures(["benches/fix_1.txt", "benches/fix_2.txt"])
 ///         )
 /// )]
-/// // All functions annotated with `#[binary_benchmark]` need to return a `iai_callgrind::Command`
-/// fn bench_foo(path: &str) -> iai_callgrind::Command {
+/// // All functions annotated with `#[binary_benchmark]` need to return a `gungraun::Command`
+/// fn bench_foo(path: &str) -> gungraun::Command {
 ///     let path = PathBuf::from(path);
 ///     // We can put any code in here which is needed to configure the `Command`.
 ///     let stdout = if path.extension().unwrap() == "txt" {
-///         iai_callgrind::Stdio::Inherit
+///         gungraun::Stdio::Inherit
 ///     } else {
-///         iai_callgrind::Stdio::File(path.with_extension("out"))
+///         gungraun::Stdio::File(path.with_extension("out"))
 ///     };
 ///     // Configure the command depending on the arguments passed to this function and the code
 ///     // above
-///     iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+///     gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
 ///         .stdout(stdout)
 ///         .arg(path)
 ///         .build()

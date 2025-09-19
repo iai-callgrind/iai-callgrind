@@ -54,7 +54,7 @@ struct BinaryBenchmark {
 /// The `BenchConfig` and `BinaryBenchmarkConfig` are rendered differently, hence the different
 /// structures
 ///
-/// Note: This struct is completely independent of the `iai_callgrind::BinaryBenchmarkConfig`
+/// Note: This struct is completely independent of the `gungraun::BinaryBenchmarkConfig`
 /// struct with the same name.
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct BinaryBenchmarkConfig(common::BenchConfig);
@@ -135,12 +135,12 @@ impl AssistantRenderer {
     ) -> TokenStream {
         match expr {
             Some(Expr::Path(_)) if iter.is_some() => quote! {
-                iai_callgrind::__internal::InternalBinAssistantKind::Iter(#assistant_id)
+                gungraun::__internal::InternalBinAssistantKind::Iter(#assistant_id)
             },
             Some(_) => quote! {
-                iai_callgrind::__internal::InternalBinAssistantKind::Default(#assistant_id)
+                gungraun::__internal::InternalBinAssistantKind::Default(#assistant_id)
             },
-            None => quote! { iai_callgrind::__internal::InternalBinAssistantKind::None },
+            None => quote! { gungraun::__internal::InternalBinAssistantKind::None },
         }
     }
 }
@@ -276,7 +276,7 @@ impl Bench {
                 let iter_expr = &iter.0;
 
                 let func = quote!(
-                    pub fn #id() -> Vec<iai_callgrind::Command> {
+                    pub fn #id() -> Vec<gungraun::Command> {
                         let __iter = #iter_expr;
 
                         #[allow(clippy::useless_conversion)]
@@ -298,7 +298,7 @@ impl Bench {
             BenchMode::Args(args) => {
                 let args_tokens = args.to_tokens_without_black_box();
                 let func = quote!(
-                    pub fn #id() -> iai_callgrind::Command {
+                    pub fn #id() -> gungraun::Command {
                         #callee(#args_tokens)
                     }
                 );
@@ -329,10 +329,10 @@ impl Bench {
                 let setup = self.setup.render_as_member(Some(id), Some(iter));
                 let teardown = self.teardown.render_as_member(Some(id), Some(iter));
                 quote! {
-                    iai_callgrind::__internal::InternalMacroBinBench {
+                    gungraun::__internal::InternalMacroBinBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalBinFunctionKind::Iter(#id),
+                        func: gungraun::__internal::InternalBinFunctionKind::Iter(#id),
                         config: #config,
                         setup: #setup,
                         teardown: #teardown,
@@ -345,10 +345,10 @@ impl Bench {
                 let setup = self.setup.render_as_member(Some(id), None);
                 let teardown = self.teardown.render_as_member(Some(id), None);
                 quote! {
-                    iai_callgrind::__internal::InternalMacroBinBench {
+                    gungraun::__internal::InternalMacroBinBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalBinFunctionKind::Default(#id),
+                        func: gungraun::__internal::InternalBinFunctionKind::Default(#id),
                         config: #config,
                         setup: #setup,
                         teardown: #teardown,
@@ -368,7 +368,7 @@ impl BenchConfig {
         if let Some(config) = &self.deref().0 {
             let ident = Self::ident(id);
             quote! {
-                pub fn #ident() -> iai_callgrind::__internal::InternalBinaryBenchmarkConfig {
+                pub fn #ident() -> gungraun::__internal::InternalBinaryBenchmarkConfig {
                     #config.into()
                 }
             }
@@ -505,11 +505,11 @@ impl BinaryBenchmark {
 
                 #new_item_fn
 
-                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench]= &[
-                    iai_callgrind::__internal::InternalMacroBinBench {
+                pub const __BENCHES: &[gungraun::__internal::InternalMacroBinBench]= &[
+                    gungraun::__internal::InternalMacroBinBench {
                         id_display: None,
                         args_display: None,
-                        func: iai_callgrind::__internal::InternalBinFunctionKind::Default(#ident),
+                        func: gungraun::__internal::InternalBinFunctionKind::Default(#ident),
                         setup: #setup_member,
                         teardown: #teardown_member,
                         config: None
@@ -547,7 +547,7 @@ impl BinaryBenchmark {
 
                 #new_item_fn
 
-                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroBinBench] = &[
+                pub const __BENCHES: &[gungraun::__internal::InternalMacroBinBench] = &[
                     #(#bin_benches,)*
                 ];
 
@@ -600,15 +600,14 @@ impl BinaryBenchmarkConfig {
         if let Some(config) = &self.deref().0 {
             quote!(
                 pub fn __get_config()
-                    -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
+                    -> Option<gungraun::__internal::InternalBinaryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
             )
         } else {
             quote!(
-                pub fn __get_config(
-                ) -> Option<iai_callgrind::__internal::InternalBinaryBenchmarkConfig>
+                pub fn __get_config() -> Option<gungraun::__internal::InternalBinaryBenchmarkConfig>
                 {
                     None
                 }

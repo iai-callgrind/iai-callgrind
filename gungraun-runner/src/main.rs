@@ -15,8 +15,8 @@ use log::{error, warn};
 /// [`gungraun_runner::error::Error`]s.
 fn main() {
     // Configure the colored crate to respect IAI_CALLGRIND_COLOR and CARGO_TERM_COLOR
-    let iai_callgrind_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
-    if let Some(var) = iai_callgrind_color
+    let gungraun_color = std::env::var(envs::IAI_CALLGRIND_COLOR).ok();
+    if let Some(var) = gungraun_color
         .clone()
         .or_else(|| std::env::var(envs::CARGO_TERM_COLOR).ok())
     {
@@ -34,7 +34,7 @@ fn main() {
         Env::default()
             .filter_or(envs::IAI_CALLGRIND_LOG, "warn")
             .write_style(
-                iai_callgrind_color
+                gungraun_color
                     .map_or_else(|| envs::CARGO_TERM_COLOR, |_| envs::IAI_CALLGRIND_COLOR),
             ),
     )

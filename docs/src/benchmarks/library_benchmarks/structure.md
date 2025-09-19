@@ -3,8 +3,8 @@
 We're reusing our example from the [Quickstart](./quickstart.md) section.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 fn fibonacci(n: u64) -> u64 {
@@ -64,8 +64,8 @@ following would have worked too and is one way to avoid the costs of the setup
 code being attributed to the benchmarked function.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 fn some_setup_func(value: u64) -> u64 {

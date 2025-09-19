@@ -13,8 +13,8 @@ Security in case of vulnerabilities.
 
 All notable changes to this project will be documented in this file.
 
-This is the combined CHANGELOG for all packages: `iai-callgrind`, `gungraun-runner` and
-`gungraun-macros`. `iai-callgrind` and `gungraun-runner` use the same version which is the
+This is the combined CHANGELOG for all packages: `gungraun`, `gungraun-runner` and
+`gungraun-macros`. `gungraun` and `gungraun-runner` use the same version which is the
 version used here. `gungraun-macros` uses a different version number but is not a standalone
 package, so its changes are also listed here.
 
@@ -522,7 +522,7 @@ If not stated otherwise the changes below were introduced in
 * The error metrics of drd, helgrind and memcheck were only shown correctly if
   they consisted of a single digit.
 * ([#297](https://github.com/iai-callgrind/iai-callgrind/pull/297)): Added the
-  derive `Clone` impl for `iai_callgrind::LibraryBenchmarkConfig`
+  derive `Clone` impl for `gungraun::LibraryBenchmarkConfig`
 * ([#300](https://github.com/iai-callgrind/iai-callgrind/pull/300)):
   `library_benchmark_group!` was private but the expanded mod should be public
   Thanks to @ryanpeach

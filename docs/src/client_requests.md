@@ -14,7 +14,7 @@ Client requests are deactivated by default but can be activated with the
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.16.1", features = ["client_requests"] }
+gungraun = { version = "0.16.1", features = ["client_requests"] }
 ```
 
 If you need the client requests in your production code, you don't want them to
@@ -25,12 +25,12 @@ to your runtime dependencies and with the `client_requests` feature to your
 
 ```toml
 [dependencies]
-iai-callgrind = { version = "0.16.1", default-features = false, features = [
+gungraun = { version = "0.16.1", default-features = false, features = [
     "client_requests_defs"
 ] }
 
 [dev-dependencies]
-iai-callgrind = { version = "0.16.1", features = ["client_requests"] }
+gungraun = { version = "0.16.1", features = ["client_requests"] }
 ```
 
 With just the `client_requests_defs` feature activated, the client requests
@@ -55,8 +55,8 @@ callgrind.h, ...}`, the correct include path would be
 Use them in your code for example like so:
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::client_requests;
+# extern crate gungraun;
+use gungraun::client_requests;
 
 # fn main() {
 fn main() {
@@ -78,8 +78,8 @@ use [`EntryPoint::None`][EntryPoint] in order to make the client requests work
 as expected:
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 pub mod my_lib {
@@ -91,11 +91,11 @@ pub mod my_lib {
 
      pub fn pre_bubble_sort(input: Vec<i32>) -> Vec<i32> {
          println!("Doing something before the function call");
-         iai_callgrind::client_requests::callgrind::start_instrumentation();
+         gungraun::client_requests::callgrind::start_instrumentation();
 
          let result = bubble_sort(input);
 
-         iai_callgrind::client_requests::callgrind::stop_instrumentation();
+         gungraun::client_requests::callgrind::stop_instrumentation();
          result
      }
 }
@@ -120,8 +120,8 @@ entering the benchmark function, not the moment `start_instrumentation` is
 called. This behaviour can be remedied with `EntryPoint::None`:
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{
+# extern crate gungraun;
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     client_requests, EntryPoint, Callgrind
 };
@@ -136,11 +136,11 @@ pub mod my_lib {
 
      pub fn pre_bubble_sort(input: Vec<i32>) -> Vec<i32> {
          println!("Doing something before the function call");
-         iai_callgrind::client_requests::callgrind::start_instrumentation();
+         gungraun::client_requests::callgrind::start_instrumentation();
 
          let result = bubble_sort(input);
 
-         iai_callgrind::client_requests::callgrind::stop_instrumentation();
+         gungraun::client_requests::callgrind::stop_instrumentation();
          result
      }
 }

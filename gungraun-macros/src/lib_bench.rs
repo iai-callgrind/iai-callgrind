@@ -63,7 +63,7 @@ struct LibraryBenchmark {
 /// The `BenchConfig` and `LibraryBenchmarkConfig` are rendered differently, hence the different
 /// structures
 ///
-/// Note: This struct is completely independent of the `iai_callgrind::LibraryBenchmarkConfig`
+/// Note: This struct is completely independent of the `gungraun::LibraryBenchmarkConfig`
 /// struct with the same name.
 #[derive(Debug, Default, Clone, DerefDerive, DerefMutDerive)]
 struct LibraryBenchmarkConfig(common::BenchConfig);
@@ -226,7 +226,7 @@ impl Bench {
                 let (bench_id_func, pats) = callee.to_caller_signature(&elem_ident, bench_id);
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
                     std::hint::black_box(
-                        __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
+                        __gungraun_wrapper_mod::#callee_ident(#(#pats),*)
                     )
                 };
 
@@ -278,7 +278,7 @@ impl Bench {
                 let (bench_id_func, pats) = callee.to_caller_signature(&elem_ident, bench_id);
                 let call_bench_func = quote_spanned! { callee_ident.span() =>
                         std::hint::black_box(
-                            __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
+                            __gungraun_wrapper_mod::#callee_ident(#(#pats),*)
                         )
                 };
 
@@ -315,10 +315,10 @@ impl Bench {
                 let args_string = self.setup.to_string_with_iter(&iter.0);
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
                 quote! {
-                    iai_callgrind::__internal::InternalMacroLibBench {
+                    gungraun::__internal::InternalMacroLibBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalLibFunctionKind::Iter(#run_id),
+                        func: gungraun::__internal::InternalLibFunctionKind::Iter(#run_id),
                         config: #config
                     }
                 }
@@ -327,10 +327,10 @@ impl Bench {
                 let args_string = self.setup.to_string_with_args(args);
                 let args_display = truncate_str_utf8(&args_string, defaults::MAX_BYTES_ARGS);
                 quote! {
-                    iai_callgrind::__internal::InternalMacroLibBench {
+                    gungraun::__internal::InternalMacroLibBench {
                         id_display: Some(#id_display),
                         args_display: Some(#args_display),
-                        func: iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_id),
+                        func: gungraun::__internal::InternalLibFunctionKind::Default(#run_id),
                         config: #config
                     }
                 }
@@ -345,7 +345,7 @@ impl BenchConfig {
             let ident = common::BenchConfig::ident(id);
             quote! {
                 #[inline(never)]
-                pub fn #ident() -> iai_callgrind::__internal::InternalLibraryBenchmarkConfig {
+                pub fn #ident() -> gungraun::__internal::InternalLibraryBenchmarkConfig {
                     #config.into()
                 }
             }
@@ -585,28 +585,28 @@ impl LibraryBenchmark {
         let (wrapper_func, pats) = callee.to_caller_signature(&elem_ident, &wrapper_ident);
         let call_bench_func = quote_spanned! { callee_ident.span() =>
                 std::hint::black_box(
-                    __iai_callgrind_wrapper_mod::#callee_ident(#(#pats),*)
+                    __gungraun_wrapper_mod::#callee_ident(#(#pats),*)
                 )
         };
 
         let export = generate_export_name(&callee, &run_func_id);
         let func = quote! {
-            iai_callgrind::__internal::InternalLibFunctionKind::Default(#run_func_id)
+            gungraun::__internal::InternalLibFunctionKind::Default(#run_func_id)
         };
 
         quote! {
             pub mod #callee_ident {
                 use super::*;
 
-                mod __iai_callgrind_wrapper_mod {
+                mod __gungraun_wrapper_mod {
                     use super::*;
 
                     #[inline(never)]
                     #new_item_fn
                 }
 
-                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroLibBench]= &[
-                    iai_callgrind::__internal::InternalMacroLibBench {
+                pub const __BENCHES: &[gungraun::__internal::InternalMacroLibBench]= &[
+                    gungraun::__internal::InternalMacroLibBench {
                         id_display: None,
                         args_display: None,
                         func: #func,
@@ -664,8 +664,8 @@ impl LibraryBenchmark {
     /// was replaced by the compiler with `my_bench::my_bench`.
     ///
     /// Next, we store all necessary information in a `BENCHES` slice of
-    /// `iai_callgrind::__internal::InternalMacroLibBench` structs. This slice can be easily
-    /// accessed by the macros of the `iai-callgrind` package in which we finally can call all the
+    /// `gungraun::__internal::InternalMacroLibBench` structs. This slice can be easily
+    /// accessed by the macros of the `gungraun` package in which we finally can call all the
     /// benchmark functions.
     ///
     /// # Example
@@ -693,14 +693,14 @@ impl LibraryBenchmark {
             pub mod #mod_name {
                 use super::*;
 
-                mod __iai_callgrind_wrapper_mod {
+                mod __gungraun_wrapper_mod {
                     use super::*;
 
                     #[inline(never)]
                     #new_item_fn
                 }
 
-                pub const __BENCHES: &[iai_callgrind::__internal::InternalMacroLibBench] = &[
+                pub const __BENCHES: &[gungraun::__internal::InternalMacroLibBench] = &[
                     #(#lib_benches,)*
                 ];
 
@@ -759,7 +759,7 @@ impl LibraryBenchmarkConfig {
             quote_spanned! { config.span() =>
                 #[inline(never)]
                 pub fn #ident()
-                    -> Option<iai_callgrind::__internal::InternalLibraryBenchmarkConfig>
+                    -> Option<gungraun::__internal::InternalLibraryBenchmarkConfig>
                 {
                     Some(#config.into())
                 }
@@ -768,7 +768,7 @@ impl LibraryBenchmarkConfig {
             quote! {
                 #[inline(never)]
                 pub fn #ident()
-                -> Option<iai_callgrind::__internal::InternalLibraryBenchmarkConfig> {
+                -> Option<gungraun::__internal::InternalLibraryBenchmarkConfig> {
                     None
                 }
             }
@@ -815,10 +815,10 @@ fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
     let item_fn_block = item_fn.block.clone();
     let block = parse_quote_spanned!( item_fn_block.span() =>
         {
-            iai_callgrind::client_requests::cachegrind::start_instrumentation();
+            gungraun::client_requests::cachegrind::start_instrumentation();
             #[allow(clippy::let_unit_value)]
             let __r = #item_fn_block;
-            iai_callgrind::client_requests::cachegrind::stop_instrumentation();
+            gungraun::client_requests::cachegrind::stop_instrumentation();
             __r
         }
     );
@@ -842,7 +842,7 @@ fn create_item_fn(item_fn: &ItemFn) -> ItemFn {
 }
 
 fn generate_export_name(callee: &Callee, run_func_id: &Ident) -> TokenStream {
-    let export_name = format!("__iai_callgrind::{}::{run_func_id}", &callee.ident);
+    let export_name = format!("__gungraun::{}::{run_func_id}", &callee.ident);
     if cfg!(unsafe_keyword_needed) {
         quote_spanned!(callee.span() => #[unsafe(export_name = #export_name)])
     } else {

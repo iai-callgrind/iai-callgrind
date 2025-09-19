@@ -1,7 +1,7 @@
 [package]
 authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
-description = "Proc macros for iai-callgrind, a high-precision and consistent benchmarking framework/harness for Rust"
+description = "Proc macros for gungraun, a high-precision and consistent benchmarking framework/harness for Rust"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true

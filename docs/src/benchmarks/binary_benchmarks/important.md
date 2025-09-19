@@ -20,8 +20,8 @@ and estimation of cycles, you can easily switch cache simulation off for example
 with
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{BinaryBenchmarkConfig, Callgrind};
+# extern crate gungraun;
+use gungraun::{BinaryBenchmarkConfig, Callgrind};
 
 BinaryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 ```
@@ -29,16 +29,16 @@ BinaryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 To switch off cache simulation for all benchmarks in the same file:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig,
     Callgrind
 };
 
 #[binary_benchmark]
-fn bench_binary() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
 }
 
 binary_benchmark_group!(name = my_group; benchmarks = bench_binary);

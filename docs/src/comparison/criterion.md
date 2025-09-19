@@ -52,7 +52,7 @@ Gungraun Cons:
   this does not include Windows.
 * Gungraun needs additional binaries, `valgrind` and the
   `gungraun-runner`. The version of the runner needs to be in sync with the
-  `iai-callgrind` library. Criterion-rs is only a library and the installation
+  `gungraun` library. Criterion-rs is only a library and the installation
   is usually simpler.
 
 Especially, due to the first point in the `Cons`, I think it is still required

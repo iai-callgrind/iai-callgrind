@@ -5,7 +5,7 @@ use std::hint::black_box;
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, Dhat, EventKind,
     LibraryBenchmarkConfig, Massif,
 };

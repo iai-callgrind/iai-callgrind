@@ -4,7 +4,7 @@ use std::hint::black_box;
 /// Generic bench arguments cause compilation failure
 ///
 /// After the fix the benchmark should now compile
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 #[derive(Debug)]
 struct A;
