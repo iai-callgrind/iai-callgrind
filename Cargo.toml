@@ -56,7 +56,7 @@ rstest = { version = ">=0.17, <0.27", default-features = false }
 rustc_version = { version = "0.4" }
 sanitize-filename = { version = "0.6" }
 schemars = { version = "1.0.4" }
-serde = { version = "1.0.194", features = ["derive"] }
+serde = { version = "1.0.225", features = ["derive"] }
 serde_json = { version = "1.0.127" }
 serde_test = { version = "1.0.177" }
 serde_yaml = { version = "0.9" }
