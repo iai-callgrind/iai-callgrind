@@ -5,6 +5,13 @@
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
+> **[!WARNING]**
+> We've outgrown our original name. **Iai‑Callgrind** is transitioning to
+> **Gungraun**. Starting with version 0.17.0, the crate will be published as
+> **Gungraun**; earlier releases remain available under the old name. Thank you
+> for your understanding — we look forward to continuing development under the new
+> name!
+
 <div align="center">
     <a href="https://iai-callgrind.github.io/iai-callgrind">Guide</a>
     |
@@ -27,6 +34,7 @@
         <img src="https://img.shields.io/badge/MSRV-1.74.1-brightgreen" alt="MSRV"/>
     </a>
 </div>
+
 
 Iai-Callgrind is a benchmarking framework/harness which uses [Valgrind's
 Callgrind][Callgrind Manual] and other Valgrind tools like DHAT, Massif, ...
