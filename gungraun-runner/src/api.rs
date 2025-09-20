@@ -2463,7 +2463,7 @@ impl TryFrom<&str> for ValgrindTool {
             "drd" => Ok(Self::DRD),
             "massif" => Ok(Self::Massif),
             "exp-bbv" => Ok(Self::BBV),
-            v => Err(anyhow!("Unknown tool '{}'", v)),
+            v => Err(anyhow!("Unknown tool '{v}'")),
         }
     }
 }

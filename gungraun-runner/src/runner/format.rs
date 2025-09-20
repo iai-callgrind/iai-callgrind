@@ -1624,7 +1624,7 @@ mod tests {
         let expected = format!(
             "  {:<21}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
             format!("{event_kind}:"),
-            old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
+            old.map_or_else(|| NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
         );
 
@@ -1668,7 +1668,7 @@ mod tests {
         let expected = format!(
             "  {:<FIELD_WIDTH$}{new:>METRIC_WIDTH$}|{:<METRIC_WIDTH$} ({diff_pct}){}\n",
             format!("{}:", EventKind::Ir),
-            old.map_or(NOT_AVAILABLE.to_owned(), |o| o.to_string()),
+            old.map_or_else(|| NOT_AVAILABLE.to_owned(), |o| o.to_string()),
             diff_fact.map_or_else(String::new, |f| format!(" [{f}]"))
         );
 

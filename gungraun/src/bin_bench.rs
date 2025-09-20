@@ -1451,7 +1451,7 @@ impl BinaryBenchmarkConfig {
     {
         self.0
             .tools_override
-            .get_or_insert(__internal::InternalTools::default())
+            .get_or_insert_with(__internal::InternalTools::default)
             .update(tool.into());
         self
     }

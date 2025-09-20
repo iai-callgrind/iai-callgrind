@@ -198,15 +198,15 @@ impl CallgrindParser for HashMapParser {
                     current_id.file = Some(make_path(&self.project_root, inline));
                 }
                 Some(("cob", cob)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
                     record.obj = Some(make_path(&self.project_root, cob));
                 }
                 Some(("cfi" | "cfl", inline)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
                     record.file = Some(make_path(&self.project_root, inline));
                 }
                 Some(("cfn", cfn)) => {
-                    let record = cfn_record.get_or_insert(CfnRecord::default());
+                    let record = cfn_record.get_or_insert_with(CfnRecord::default);
                     record.id = Some(Id {
                         obj: record.obj.take().or_else(|| current_id.obj.clone()),
                         func: cfn.to_owned(),
