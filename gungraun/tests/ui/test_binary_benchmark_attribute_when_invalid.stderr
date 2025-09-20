@@ -47,20 +47,20 @@ error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:15:9
    |
 14 |     fn bench_binary() -> gungraun::Command {
-   |                          ---------------------- expected `gungraun::Command` because of return type
+   |                          ----------------- expected `gungraun::Command` because of return type
 15 |         gungraun::Command::new("some").arg("some_arg")
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Command`, found `&mut Command`
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `Command`, found `&mut Command`
    |
 help: call `Into::into` on this expression to convert `&mut gungraun::Command` into `gungraun::Command`
    |
 15 |         gungraun::Command::new("some").arg("some_arg").into()
-   |                                                            +++++++
+   |                                                       +++++++
 
 error[E0308]: mismatched types
   --> tests/ui/test_binary_benchmark_attribute_when_invalid.rs:24:9
    |
 23 |     fn bench_binary() -> gungraun::Command {
-   |                          ---------------------- expected `gungraun::Command` because of return type
+   |                          ----------------- expected `gungraun::Command` because of return type
 24 |         std::process::Command::new("some")
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `gungraun::Command`, found `std::process::Command`
    |
