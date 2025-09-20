@@ -186,6 +186,11 @@ path = "benches/test_bin_bench/iter/test_bin_bench_iter.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_filter"
+path = "benches/test_bin_bench/filter/test_bin_bench_filter.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 
@@ -303,6 +308,11 @@ path = "benches/test_lib_bench/xtree/test_lib_bench_xtree.rs"
 harness = false
 name = "test_lib_bench_iter"
 path = "benches/test_lib_bench/iter/test_lib_bench_iter.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_filter"
+path = "benches/test_lib_bench/filter/test_lib_bench_filter.rs"
 
 [[bench]]
 harness = false
