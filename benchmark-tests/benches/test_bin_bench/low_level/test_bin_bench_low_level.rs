@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
     BinaryBenchmark, BinaryBenchmarkConfig, Command, OutputFormat, Sandbox, Stdio,
 };
@@ -34,8 +34,8 @@ binary_benchmark_group!(
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ATTRIBUTE_ENV", "3"))]
 #[bench::case_1(args = ("10"), config = BinaryBenchmarkConfig::default().env("BENCH_IN_ATTRIBUTE_ENV", "10"))]
 #[bench::case_2(args = ("20"), config = BinaryBenchmarkConfig::default().env("BENCH_IN_ATTRIBUTE_ENV", "20"))]
-fn bench_attribute(id: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ENV)
+fn bench_attribute(id: &str) -> gungraun::Command {
+    gungraun::Command::new(ENV)
         .args([
             "--check",
             "MAIN_ENV=1",

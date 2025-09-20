@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_best_case_array, setup_worst_case_array};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Dhat, EntryPoint, LibraryBenchmarkConfig,
     ValgrindTool,
 };
@@ -84,7 +84,7 @@ fn copy(mut src: Vec<i32>) -> (Vec<i32>, Vec<i32>) {
     setup = setup_worst_case_array
 )]
 fn ad_hoc(data: Vec<i32>) -> Vec<i32> {
-    iai_callgrind::client_requests::dhat::ad_hoc_event(15);
+    gungraun::client_requests::dhat::ad_hoc_event(15);
     black_box(bubble_sort(data))
 }
 

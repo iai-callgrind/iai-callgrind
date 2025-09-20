@@ -8,13 +8,13 @@ Per default, all terminal output of the benchmark function, `setup` and
 ## Using the log level
 
 The most basic possibility to show any captured output, is to use
-[`IAI_CALLGRIND_LOG=info`](./logging.md). This includes a lot of other output,
+[`GUNGRAUN_LOG=info`](./logging.md). This includes a lot of other output,
 too.
 
-## Tell Iai-Callgrind to not capture the output
+## Tell Gungraun to not capture the output
 
-Another nicer possibility is, to tell Iai-Callgrind to not capture output with
-the `--nocapture` (env: `IAI_CALLGRIND_NOCAPTURE`) option. This is currently
+Another nicer possibility is, to tell Gungraun to not capture output with
+the `--nocapture` (env: `GUNGRAUN_NOCAPTURE`) option. This is currently
 restricted to the `callgrind` run to prevent showing the same output multiple
 times. So, any terminal output of [other tool runs](../../tools.md) is still
 captured.
@@ -32,8 +32,8 @@ output to `stdout`.
 Let's take as example a library benchmark `benches/my_benchmark.rs`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+# extern crate gungraun;
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 fn print_to_stderr(value: u64) {
@@ -60,7 +60,7 @@ main!(library_benchmark_groups = my_group);
 ```
 
 If the above benchmark is run with `cargo bench --bench my_benchmark --
---nocapture`, the output of Iai-Callgrind will look like this:
+--nocapture`, the output of Gungraun will look like this:
 
 <pre><code class="hljs"><span style="color:#0A0">my_benchmark::my_group::bench_library</span> <span style="color:#0AA">some_id</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
 Output to stdout: 20
@@ -73,7 +73,7 @@ Error output during teardown: 20
   Total read+write: <b>           1264</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>           3528</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Everything between the headline and the `- end of stdout/stderr` line is output
 from your benchmark. The `- end of stdout/stderr` line changes depending on the
@@ -82,6 +82,6 @@ indicates your chosen option with `- end of stdout`.
 
 Note that independently of the value of the `--nocapture` option, all logging
 output of a valgrind tool itself is stored in files in the output directory of
-the benchmark. Since Iai-Callgrind needs the logging output of valgrind tools
+the benchmark. Since Gungraun needs the logging output of valgrind tools
 stored in files, there is no option to disable the creation of these log files.
 But, if anything goes sideways you might be glad to have the log files around.

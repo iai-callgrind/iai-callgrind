@@ -149,8 +149,8 @@ dependencies = [
  "either-or-both",
  "fs_extra",
  "glob",
- "iai-callgrind",
- "iai-callgrind-runner",
+ "gungraun",
+ "gungraun-runner",
  "lazy_static",
  "minijinja",
  "once_cell",
@@ -367,7 +367,7 @@ dependencies = [
  "assert_cmd",
  "cty",
  "fs_extra",
- "iai-callgrind",
+ "gungraun",
  "lazy_static",
  "predicates",
  "regex",
@@ -700,34 +700,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0cc23270f6e1808e30a928bdc84dea0b9b4136a8bc82338574f23baf47bbd280"
 
 [[package]]
-name = "hashbrown"
-version = "0.14.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
-
-[[package]]
-name = "hashbrown"
-version = "0.15.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
-
-[[package]]
-name = "heck"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
-
-[[package]]
-name = "higher-kinded-types"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "561985554c8b8d4808605c90a5f1979cc6c31a5d20b78465cd59501233c6678e"
-dependencies = [
- "never-say-never",
-]
-
-[[package]]
-name = "iai-callgrind"
+name = "gungraun"
 version = "0.16.1"
 dependencies = [
  "bincode",
@@ -737,8 +710,8 @@ dependencies = [
  "cty",
  "derive_more",
  "fs_extra",
- "iai-callgrind-macros",
- "iai-callgrind-runner",
+ "gungraun-macros",
+ "gungraun-runner",
  "regex",
  "rstest",
  "rustc_version",
@@ -750,7 +723,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "iai-callgrind-macros"
+name = "gungraun-macros"
 version = "0.6.1"
 dependencies = [
  "derive_more",
@@ -766,7 +739,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "iai-callgrind-runner"
+name = "gungraun-runner"
 version = "0.16.1"
 dependencies = [
  "anyhow",
@@ -799,6 +772,33 @@ dependencies = [
  "tempfile",
  "version-compare",
  "which",
+]
+
+[[package]]
+name = "hashbrown"
+version = "0.14.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
+
+[[package]]
+name = "hashbrown"
+version = "0.15.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9229cfe53dfd69f0609a49f65461bd93001ea1ef889cd5529dd176593f5338a1"
+
+[[package]]
+name = "heck"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "higher-kinded-types"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "561985554c8b8d4808605c90a5f1979cc6c31a5d20b78465cd59501233c6678e"
+dependencies = [
+ "never-say-never",
 ]
 
 [[package]]
@@ -1601,7 +1601,7 @@ dependencies = [
 name = "schema-gen"
 version = "0.16.1"
 dependencies = [
- "iai-callgrind-runner",
+ "gungraun-runner",
  "schemars",
  "serde_json",
 ]

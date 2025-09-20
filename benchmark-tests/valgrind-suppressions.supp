@@ -2,20 +2,20 @@
    drd_set_current_info_freebsd
    drd:ConflictingAccess
    ...
-   fun:_ZN3std3sys3pal4unix14stack_overflow11thread_info16set_current_info17h77e2b48f9f9123e9E
-   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12make_handler17h90e8a834a348eed8E
+   fun:_ZN3std3sys3pal4unix14stack_overflow11thread_info16set_current_info*
+   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12make_handler*
    fun:new
-   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start17h62a5fb21fbab7da7E
+   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start*
    ...
 }
 {
    drd_set_current_info
    drd:ConflictingAccess
    ...
-   fun:_ZN3std3sys3pal4unix14stack_overflow11thread_info16set_current_info17hbaf35f510d023a07E
-   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12make_handler17h51bb12c27fa37d2bE
+   fun:_ZN3std3sys3pal4unix14stack_overflow11thread_info16set_current_info*
+   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12make_handler*
    fun:new
-   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start17h1ff51d6e85162efdE
+   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start*
    obj:*/valgrind/vgpreload_drd-amd64-linux.so
    ...
    fun:clone
@@ -25,10 +25,10 @@
    drd:ConflictingAccess
    ...
    fun:delete_current_info
-   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12drop_handler17h10197aa6a61a291fE
+   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12drop_handler*
    fun:drop
    fun:drop_in_place<std::sys::pal::unix::stack_overflow::Handler>
-   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start17h62a5fb21fbab7da7E
+   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start*
    ...
 }
 {
@@ -36,10 +36,10 @@
    drd:ConflictingAccess
    ...
    fun:delete_current_info
-   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12drop_handler17he7ee90e84a07b15aE
+   fun:_ZN3std3sys3pal4unix14stack_overflow3imp12drop_handler*
    fun:drop
    fun:drop_in_place<std::sys::pal::unix::stack_overflow::Handler>
-   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start17h1ff51d6e85162efdE
+   fun:_ZN3std3sys3pal4unix6thread6Thread3new12thread_start*
    obj:*/valgrind/vgpreload_drd-amd64-linux.so
    ...
    fun:clone
@@ -67,6 +67,6 @@
    fun:do_call<std::rt::lang_start_internal::{closure_env#0}, isize>
    fun:catch_unwind<isize, std::rt::lang_start_internal::{closure_env#0}>
    fun:catch_unwind<std::rt::lang_start_internal::{closure_env#0}, isize>
-   fun:_ZN3std2rt19lang_start_internal17h31bbb7f936fd6b5dE
+   fun:_ZN3std2rt19lang_start_internal*
    fun:main
 }

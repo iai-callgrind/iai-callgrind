@@ -7,7 +7,7 @@ runner = "qemu-system"
 [target.x86_64-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "x86_64-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "x86_64-unknown-linux-gnu" }
 
 [target.x86_64-unknown-linux-gnu.env]
 passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_x86_64_unknown_linux_gnu='--verbose'"]
@@ -21,7 +21,7 @@ runner = "qemu-system"
 [target.i686-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "i686-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "i686-unknown-linux-gnu" }
 
 [target.i686-unknown-linux-gnu.env]
 passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_i686_unknown_linux_gnu='--verbose'"]
@@ -35,7 +35,7 @@ runner = "qemu-system"
 [target.s390x-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "s390x-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "s390x-unknown-linux-gnu" }
 
 [target.s390x-unknown-linux-gnu.env]
 passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_s390x_unknown_linux_gnu='--verbose'"]
@@ -49,7 +49,7 @@ runner = "qemu-system"
 [target.aarch64-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "aarch64-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "aarch64-unknown-linux-gnu" }
 
 [target.aarch64-unknown-linux-gnu.env]
 passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_aarch64_unknown_linux_gnu='--verbose'"]
@@ -63,7 +63,7 @@ runner = "qemu-system"
 [target.armv7-unknown-linux-gnueabihf.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "armv7-unknown-linux-gnueabihf" }
+build-args = { GUNGRAUN_CROSS_TARGET = "armv7-unknown-linux-gnueabihf" }
 
 [target.armv7-unknown-linux-gnueabihf.env]
 passthrough = [
@@ -80,7 +80,7 @@ runner = "qemu-system"
 [target.powerpc-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "powerpc-unknown-linux-gnu" }
 
 [target.powerpc-unknown-linux-gnu.env]
 passthrough = ["BINDGEN_EXTRA_CLANG_ARGS_powerpc_unknown_linux_gnu='--verbose'"]
@@ -94,7 +94,7 @@ runner = "qemu-system"
 [target.powerpc64-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc64-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "powerpc64-unknown-linux-gnu" }
 
 [target.powerpc64-unknown-linux-gnu.env]
 passthrough = [
@@ -110,7 +110,7 @@ runner = "qemu-system"
 [target.powerpc64le-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "powerpc64le-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "powerpc64le-unknown-linux-gnu" }
 
 [target.powerpc64le-unknown-linux-gnu.env]
 passthrough = [
@@ -126,7 +126,7 @@ runner = "qemu-system"
 [target.riscv64gc-unknown-linux-gnu.dockerfile]
 file = "docker/Dockerfile"
 context = "docker"
-build-args = { IAI_CALLGRIND_CROSS_TARGET = "riscv64gc-unknown-linux-gnu" }
+build-args = { GUNGRAUN_CROSS_TARGET = "riscv64gc-unknown-linux-gnu" }
 
 [target.riscv64gc-unknown-linux-gnu.env]
 passthrough = [

@@ -1,4 +1,4 @@
-use iai_callgrind::{
+use gungraun::{
     self, binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Dhat, Pipe, Stdin,
     Stdio,
 };
@@ -11,8 +11,8 @@ fn setup() {
 }
 
 #[binary_benchmark]
-fn bench_echo() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
+fn bench_echo() -> gungraun::Command {
+    gungraun::Command::new(ECHO)
         .args(["1", "2"])
         .stdout(Stdio::Inherit)
         .stderr(Stdio::Null)
@@ -24,8 +24,8 @@ fn bench_echo() -> iai_callgrind::Command {
     config = BinaryBenchmarkConfig::default()
         .tool(Dhat::default())
 )]
-fn bench_pipe() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(PIPE)
+fn bench_pipe() -> gungraun::Command {
+    gungraun::Command::new(PIPE)
         .stdin(Stdin::Setup(Pipe::Stdout))
         .build()
 }

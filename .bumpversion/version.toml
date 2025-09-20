@@ -9,22 +9,22 @@ search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind/Cargo.toml"
-search = 'path = "../iai-callgrind-runner", version = "={current_version}"'
-replace = 'path = "../iai-callgrind-runner", version = "={new_version}"'
+filename = "gungraun/Cargo.toml"
+search = 'path = "../gungraun-runner", version = "={current_version}"'
+replace = 'path = "../gungraun-runner", version = "={new_version}"'
 
 [[tool.bumpversion.files]]
 filename = "schema-gen/Cargo.toml"
-search = 'path = "../iai-callgrind-runner", version = "={current_version}"'
-replace = 'path = "../iai-callgrind-runner", version = "={new_version}"'
+search = 'path = "../gungraun-runner", version = "={current_version}"'
+replace = 'path = "../gungraun-runner", version = "={new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind/src/__internal/mod.rs"
+filename = "gungraun/src/__internal/mod.rs"
 search = "const LIBRARY_VERSION: &str = \"{current_version}\""
 replace = "const LIBRARY_VERSION: &str = \"{new_version}\""
 
 [[tool.bumpversion.files]]
-filename = "iai-callgrind/src/client_requests/mod.rs"
+filename = "gungraun/src/client_requests/mod.rs"
 search = "version = \"{current_version}\""
 replace = "version = \"{new_version}\""
 

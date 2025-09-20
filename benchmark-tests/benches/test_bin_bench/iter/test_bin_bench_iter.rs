@@ -1,4 +1,4 @@
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
     BinaryBenchmark, BinaryBenchmarkConfig, OutputFormat, Sandbox,
 };
@@ -36,8 +36,8 @@ fn print_files() {
 #[binary_benchmark]
 #[benches::one(iter = vec![(1, 2)])]
 #[benches::two(iter = vec![(1, 2), (3, 4)])]
-fn bench_tuple((first, second): (u64, u64)) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
+fn bench_tuple((first, second): (u64, u64)) -> gungraun::Command {
+    gungraun::Command::new(ECHO)
         .arg(first.to_string())
         .arg(second.to_string())
         .build()
@@ -66,8 +66,8 @@ fn bench_tuple((first, second): (u64, u64)) -> iai_callgrind::Command {
     setup = create_files(&["one.txt", "two.txt"]),
     teardown = remove_file
 )]
-fn bench_assists(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn bench_assists(path: &str) -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .arg(path)
         .arg("true")
         .build()
@@ -89,14 +89,14 @@ binary_benchmark_group!(
                 BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO).arg("foo"))
+                            .command(gungraun::Command::new(ECHO).arg("foo"))
                     )
             )
             .binary_benchmark(
                 BinaryBenchmark::new("low_level_other")
                     .bench(
                         Bench::new("bar")
-                            .command(iai_callgrind::Command::new(ECHO).arg("bar"))
+                            .command(gungraun::Command::new(ECHO).arg("bar"))
                     )
                 )
     }

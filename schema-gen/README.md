@@ -1,6 +1,6 @@
 <!-- spellchecker: ignore nofile nocapture -->
 
-<h1 align="center">Iai-Callgrind</h1>
+<h1 align="center">Gungraun</h1>
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 

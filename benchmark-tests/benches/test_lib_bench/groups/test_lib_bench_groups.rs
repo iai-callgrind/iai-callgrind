@@ -5,7 +5,7 @@ use std::hint::black_box;
 
 // These two functions from the benchmark-tests library serve as functions we want to benchmark
 use benchmark_tests::{bubble_sort, fibonacci};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, Dhat, EventKind,
     LibraryBenchmarkConfig, Massif,
 };
@@ -190,11 +190,11 @@ library_benchmark_group!(
 // with `LibraryBenchmarkConfig::default_tool`for example if you're just interested in running DHAT.
 // Running cachegrind instead of callgrind is also possible but requires additional steps. This is
 // best described in the guide:
-// https://iai-callgrind.github.io/iai-callgrind/latest/html/index.html. You can also find a lot of
-// other Iai-Callgrind feature descriptions there.
+// https://gungraun.github.io/gungraun/latest/html/index.html. You can also find a lot of
+// other Gungraun feature descriptions there.
 //
 // The output files of the profiling tools (DHAT, Massif, BBV) can be found next to the output files
-// of the callgrind runs in `target/iai/...`.
+// of the callgrind runs in `target/gungraun/...`.
 main!(
     config = LibraryBenchmarkConfig::default()
         .tool(Callgrind::default()

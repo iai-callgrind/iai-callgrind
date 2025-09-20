@@ -4,10 +4,10 @@
 
 As in library benchmarks, the environment variables are cleared before running a
 binary benchmark. Have a look at the [Configuration](./configuration.md) section
-if you want to change this behavior. Iai-Callgrind sometimes deviates from the
+if you want to change this behavior. Gungraun sometimes deviates from the
 valgrind defaults which are:
 
-| Iai-Callgrind | Valgrind (v3.23) |
+| Gungraun | Valgrind (v3.23) |
 | ------------- | -------- |
 | `--trace-children=yes` | `--trace-children=no` |
 | `--fair-sched=try` | `--fair-sched=no` |
@@ -20,8 +20,8 @@ and estimation of cycles, you can easily switch cache simulation off for example
 with
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{BinaryBenchmarkConfig, Callgrind};
+# extern crate gungraun;
+use gungraun::{BinaryBenchmarkConfig, Callgrind};
 
 BinaryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 ```
@@ -29,16 +29,16 @@ BinaryBenchmarkConfig::default().tool(Callgrind::with_args(["--cache-sim=no"]));
 To switch off cache simulation for all benchmarks in the same file:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig,
     Callgrind
 };
 
 #[binary_benchmark]
-fn bench_binary() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
 }
 
 binary_benchmark_group!(name = my_group; benchmarks = bench_binary);

@@ -1,16 +1,16 @@
 use std::fs::File;
 use std::io::Write;
 
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 
-const GROUP_SETUP_FILE: &str = "/tmp/iai-callgrind.group_setup.tmp";
+const GROUP_SETUP_FILE: &str = "/tmp/gungraun.group_setup.tmp";
 const READ_FILE: &str = env!("CARGO_BIN_EXE_read-file");
 const FILE_EXISTS: &str = env!("CARGO_BIN_EXE_file-exists");
 
 #[binary_benchmark]
-fn simple_bench() -> iai_callgrind::Command {
+fn simple_bench() -> gungraun::Command {
     let expected = format!("simple_group_with_setup: {GROUP_SETUP_FILE}");
-    iai_callgrind::Command::new(READ_FILE)
+    gungraun::Command::new(READ_FILE)
         .arg(GROUP_SETUP_FILE)
         .arg(expected)
         .build()
@@ -28,16 +28,16 @@ fn group_teardown() {
 }
 
 #[binary_benchmark]
-fn check_file_exists() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn check_file_exists() -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .arg(GROUP_SETUP_FILE)
         .arg("true")
         .build()
 }
 
 #[binary_benchmark]
-fn check_file_not_exists() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn check_file_not_exists() -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .arg(GROUP_SETUP_FILE)
         .arg("false")
         .build()

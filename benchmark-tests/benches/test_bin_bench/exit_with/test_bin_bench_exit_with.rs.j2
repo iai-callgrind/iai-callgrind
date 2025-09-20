@@ -1,11 +1,11 @@
-use iai_callgrind::{
+use gungraun::{
   binary_benchmark, binary_benchmark_group, main, ExitWith, BinaryBenchmarkConfig, OutputFormat
 };
 
 #[binary_benchmark]
 #[bench::exit_with({{ exit_with }})]
-fn bench_exit_with(exit_with: ExitWith) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_exit-with"))
+fn bench_exit_with(exit_with: ExitWith) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_exit-with"))
         .arg("{{ exit_code }}")
         .exit_with(exit_with)
         .build()

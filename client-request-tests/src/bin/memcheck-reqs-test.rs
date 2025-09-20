@@ -1,6 +1,6 @@
 use client_request_tests::MARKER;
-use iai_callgrind::client_requests::{self};
-use iai_callgrind::{cstring, valgrind_println_unchecked};
+use gungraun::client_requests::{self};
+use gungraun::{cstring, valgrind_println_unchecked};
 
 fn leak_memory() {
     for _ in 0..1 {

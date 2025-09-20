@@ -8,9 +8,9 @@ Multiple benches can be specified at once with the
 Let's start with an example:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 use my_lib::bubble_sort;
 
@@ -41,9 +41,9 @@ can be seen in the `#[benches::multiple(/* arguments */)]` case. In
 instead. The above `#[library_benchmark]` is pretty much the same as
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 use my_lib::bubble_sort;
 
@@ -95,9 +95,9 @@ root) with the following content
 then
 
 ```rust,ignore
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn string_to_u64(value: String) -> Result<u64, String> { Ok(1) } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -115,9 +115,9 @@ main!(library_benchmark_groups = my_group);
 The above is roughly equivalent to the following but with the `args` parameter
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn string_to_u64(value: String) -> Result<u64, String> { Ok(1) } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -145,16 +145,16 @@ you decided to go with a csv like format in the file `benches/inputs`
 and your library has a function which converts from RGB to HSV color space:
 
 ```rust,ignore
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn rgb_to_hsv(a: u8, b: u8, c:u8) -> (u16, u8, u8) { (a.into(), b, c) } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 fn decode_line(line: String) -> (u8, u8, u8) {
     if let &[a, b, c] = line.split(";")
         .map(|s| s.parse::<u8>().unwrap())
         .collect::<Vec<u8>>()
-        .as_slice() 
+        .as_slice()
     {
         (a, b, c)
     } else {

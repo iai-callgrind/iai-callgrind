@@ -1,7 +1,7 @@
 # Sandbox
 
 The
-[`Sandbox`](https://docs.rs/iai-callgrind/0.16.1/iai_callgrind/struct.Sandbox.html)
+[`Sandbox`](https://docs.rs/iai-callgrind/0.16.1/gungraun/struct.Sandbox.html)
 is a temporary directory which is created before the execution of the `setup`
 and deleted after the `teardown`. `setup`, the `Command` and `teardown` are
 executed inside this temporary directory. This simply describes the order of the
@@ -35,9 +35,9 @@ rely on `teardown`, as `teardown` is only executed if the `Command` returns
 without error.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox
 };
 
@@ -51,8 +51,8 @@ fn create_file(path: &str) {
     config = BinaryBenchmarkConfig::default().sandbox(Sandbox::new(true)),
     setup = create_file
 )]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }
@@ -76,9 +76,9 @@ workspace into the sandbox that easily anymore. The `Sandbox` can be configured
 to copy `fixtures` into the temporary directory with `Sandbox::fixtures`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox
 };
 
@@ -89,8 +89,8 @@ use iai_callgrind::{
         .sandbox(Sandbox::new(true)
             .fixtures(["benches/foo.txt"])),
 )]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }
@@ -117,9 +117,9 @@ copy it into a temporary directory `tmp` (which may or may not exist) in
 `foo_crate`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Sandbox
 };
 use std::path::PathBuf;
@@ -153,8 +153,8 @@ fn copy_back(path: &str) {
     setup = copy_fixture,
     teardown = copy_back("bar.json")
 )]
-fn bench_binary(path: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary(path: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
         .arg(path)
         .build()
 }

@@ -30,9 +30,9 @@ function can then be further annotated with the inner
 attributes.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -58,9 +58,9 @@ The following parameters are accepted:
 - `teardown`: Similar to `setup` but takes a global `teardown` function.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     OutputFormat
 };
@@ -103,9 +103,9 @@ arguments as a list of values. So, instead of `#[bench::my_id(args = (10,
 20))]`, you could also use the shorter `#[bench::my_id(10, 20)]`.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
+use gungraun::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
 use std::hint::black_box;
 
 // This function is used to create a worst case array we want to sort with our implementation of
@@ -142,9 +142,9 @@ parameter in [`#[bench]`](#the-bench-attribute), `args` takes an array of
 arguments.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(value: Vec<i32>) -> Vec<i32> { value } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
+use gungraun::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
 use std::hint::black_box;
 
 pub fn worst_case(start: i32) -> Vec<i32> {
@@ -198,7 +198,7 @@ mentioned attributes.
 
 ## The main! macro
 
-This macro is the entry point for Iai-Callgrind and creates the benchmark
+This macro is the entry point for Gungraun and creates the benchmark
 harness. It accepts the following top-level arguments in this order (separated
 by a semicolon):
 

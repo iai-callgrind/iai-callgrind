@@ -1,13 +1,13 @@
 # Other Valgrind Tools
 
 In addition to or instead of the default tool `Callgrind`, you can use the
-Iai-Callgrind framework to run other Valgrind profiling tools like
+Gungraun framework to run other Valgrind profiling tools like
 [`DHAT`](./dhat.md), `Massif` or even [`Cachegrind`](./cachegrind.md) and the
 experimental `BBV` but also error checking tools like `Memcheck`, `Helgrind` and
 `DRD`.
 
 Note that support for `Massif` or `BBV` is currently only basic and doesn't show
-useful stats and metrics in the terminal output of Iai-Callgrind. But, the
+useful stats and metrics in the terminal output of Gungraun. But, the
 output files are generated as usual and are ready to be examined with tools like
 `ms_print`.
 
@@ -20,11 +20,11 @@ each tool and their command line arguments.
 It's possible to change the default tool `Callgrind` to any other valgrind tool
 with the [command-line argument](./cli_and_env/basics.md)
 `--default-tool=<tool>` or environment variable
-`IAI_CALLGRIND_DEFAULT_TOOL=<tool>`. `<tool>` may be one of `callgrind`,
+`GUNGRAUN_DEFAULT_TOOL=<tool>`. `<tool>` may be one of `callgrind`,
 `cachegrind`, `dhat`, `massif`, `memcheck`, `helgrind`, `drd`, `exp-bbv`.
 
 Running tools in addition to the default tool can be achieved with
-`--tools=<tools>` or `IAI_CALLGRIND_TOOLS=<tools>` where `<tools>` is a
+`--tools=<tools>` or `GUNGRAUN_TOOLS=<tools>` where `<tools>` is a
 `,`-separated list of one or more of the `<tool>` above.
 
 The tool configurations can be changed in the benchmark file by specifying the
@@ -37,9 +37,9 @@ all library benchmarks in the same file in addition to `Callgrind` without the
 need for `--tools=dhat`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     ValgrindTool, Dhat
 };
@@ -67,8 +67,8 @@ set, so if there are any errors, the benchmark run fails with `201`. You can
 overwrite this default for example for `Memcheck`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{Memcheck, ValgrindTool};
+# extern crate gungraun;
+use gungraun::{Memcheck, ValgrindTool};
 
 Memcheck::with_args(["--error-exitcode=0"]);
 ```

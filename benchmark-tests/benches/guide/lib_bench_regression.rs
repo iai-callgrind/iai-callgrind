@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use benchmark_tests as my_lib;
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, EventKind, LibraryBenchmarkConfig,
 };
 

@@ -1,13 +1,13 @@
 use std::process::Command;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, Dhat, Stdio,
 };
 
 #[binary_benchmark(config = BinaryBenchmarkConfig::default().env("BINARY_BENCHMARK_ENV", "3"))]
 #[bench::with_env(config = BinaryBenchmarkConfig::default().env("BENCH_ENV", "4"))]
-fn bench_binary() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_env"))
+fn bench_binary() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_env"))
         .args([
             "--check",
             "MAIN_ENV=1",
@@ -67,8 +67,8 @@ fn check_teardown_is_not_cleared() {
         .env("BENCH_ENV", "4")
         .tool(Dhat::default())
 )]
-fn check_env_is_cleared() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_env"))
+fn check_env_is_cleared() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_env"))
         .args(["--is-cleared=true"])
         .env("COMMAND_ENV", "5")
         .stdout(Stdio::Inherit)

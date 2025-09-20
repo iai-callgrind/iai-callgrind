@@ -5,12 +5,13 @@
 # Helper script to generate coverage data with grcov using the coverage profile
 # from `.cargo/config` to simplify cleanup of stale coverage data.
 
-root_dir="$(cd "$(dirname "$0")" && cd ..))" || exit 1
+cd "$(dirname "$0")" && cd .. || exit 1
 
 just_clean=0
 if [[ "$1" == "--clean" ]]; then
   just_clean=1
 fi
+
 # Valgrind sometimes exits in benchmarks with the error
 #
 # valgrind: m_debuginfo/readelf.c:718 (get_elf_symbol_info): Assertion 'in_rx' failed.
@@ -18,7 +19,7 @@ fi
 # The error disappeared after adding -Cdebuginfo=2 to RUSTFLAGS and running all
 # cargo commands with the nightly toolchain
 export RUSTFLAGS="-Cinstrument-coverage -Cdebuginfo=2" # -Csplit-debuginfo=off
-export LLVM_PROFILE_FILE="iai_callgrind_coverage-%p-%m.profraw"
+export LLVM_PROFILE_FILE="gungraun_coverage-%p-%m.profraw"
 
 bindir="$(dirname "$(rustc --print target-libdir)")/bin"
 if [[ ! -e "${bindir}/llvm-cov" ]]; then
@@ -37,10 +38,10 @@ fi
 
 cargo +nightly build --all-features --profile coverage --all-targets
 
-IAI_CALLGRIND_RUNNER=$(realpath -e target/coverage/iai-callgrind-runner)
-IAI_CALLGRIND_LOG=debug
+GUNGRAUN_RUNNER=$(realpath -e target/coverage/gungraun-runner)
+GUNGRAUN_LOG=debug
 
-export IAI_CALLGRIND_RUNNER IAI_CALLGRIND_LOG
+export GUNGRAUN_RUNNER GUNGRAUN_LOG
 
 cargo +nightly test --all-features --profile coverage --no-fail-fast
 cargo +nightly bench --all-features --profile coverage --no-fail-fast

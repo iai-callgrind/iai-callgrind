@@ -1,0 +1,45 @@
+==00:00:00:00.000 1411024== Memcheck, a memory error detector
+==00:00:00:00.000 1411024== Copyright (C) 2002-2024, and GNU GPL'd, by Julian Seward et al.
+==00:00:00:00.000 1411024== Using Valgrind-3.23.0 and LibVEX; rerun with -h for copyright info
+==00:00:00:00.000 1411024== Command: /home/some/workspace/target/release/deps/some-a2bc441ce58bd063
+==00:00:00:00.000 1411024== Parent PID: 1409852
+==00:00:00:00.000 1411024==
+==00:00:00:00.730 1411024==
+==00:00:00:00.731 1411024== HEAP SUMMARY:
+==00:00:00:00.731 1411024==     in use at exit: 5,600,000 bytes in 200,000 blocks
+==00:00:00:00.731 1411024==   total heap usage: 200,016 allocs, 16 frees, 5,602,476 bytes allocated
+==00:00:00:00.731 1411024==
+==00:00:00:00.773 1411024== 5,600,000 (3,200,000 direct, 2,400,000 indirect) bytes in 100,000 blocks are definitely lost in loss record 2 of 2
+==00:00:00:00.773 1411024==    at 0x48447A8: malloc (vg_replace_malloc.c:446)
+==00:00:00:00.773 1411024==    by 0x11BE8F: alloc (alloc.rs:100)
+==00:00:00:00.773 1411024==    by 0x11BE8F: alloc_impl (alloc.rs:183)
+==00:00:00:00.773 1411024==    by 0x11BE8F: allocate (alloc.rs:243)
+==00:00:00:00.773 1411024==    by 0x11BE8F: exchange_malloc (alloc.rs:332)
+==00:00:00:00.773 1411024==    by 0x11BE8F: new<alloc::rc::RcBox<core::cell::RefCell<test_lib_bench_tools::Left>>> (boxed.rs:260)
+==00:00:00:00.773 1411024==    by 0x11BE8F: new<core::cell::RefCell<test_lib_bench_tools::Left>> (rc.rs:402)
+==00:00:00:00.773 1411024==    by 0x11BE8F: test_lib_bench_tools::bad_memory::__gungraun_wrapper_mod::bad_memory (test_lib_bench_tools.rs:79)
+==00:00:00:00.773 1411024==    by 0x11CFA5: test_lib_bench_tools::bad_memory::wrapper (test_lib_bench_tools.rs:68)
+==00:00:00:00.773 1411024==    by 0x118035: test_lib_bench_tools::main (macros.rs:739)
+==00:00:00:00.773 1411024==    by 0x11D0D2: call_once<fn(), ()> (function.rs:250)
+==00:00:00:00.773 1411024==    by 0x11D0D2: std::sys::backtrace::__rust_begin_short_backtrace (backtrace.rs:152)
+==00:00:00:00.773 1411024==    by 0x11BB98: std::rt::lang_start::{{closure}} (rt.rs:162)
+==00:00:00:00.773 1411024==    by 0x13CC3F: call_once<(), (dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe)> (function.rs:284)
+==00:00:00:00.773 1411024==    by 0x13CC3F: do_call<&(dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe), i32> (panicking.rs:557)
+==00:00:00:00.773 1411024==    by 0x13CC3F: try<i32, &(dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe)> (panicking.rs:521)
+==00:00:00:00.773 1411024==    by 0x13CC3F: catch_unwind<&(dyn core::ops::function::Fn<(), Output=i32> + core::marker::Sync + core::panic::unwind_safe::RefUnwindSafe), i32> (panic.rs:350)
+==00:00:00:00.773 1411024==    by 0x13CC3F: {closure#2} (rt.rs:141)
+==00:00:00:00.773 1411024==    by 0x13CC3F: do_call<std::rt::lang_start_internal::{closure_env#2}, isize> (panicking.rs:557)
+==00:00:00:00.773 1411024==    by 0x13CC3F: try<isize, std::rt::lang_start_internal::{closure_env#2}> (panicking.rs:521)
+==00:00:00:00.773 1411024==    by 0x13CC3F: catch_unwind<std::rt::lang_start_internal::{closure_env#2}, isize> (panic.rs:350)
+==00:00:00:00.773 1411024==    by 0x13CC3F: std::rt::lang_start_internal (rt.rs:141)
+==00:00:00:00.773 1411024==    by 0x11828B: main (in /home/some/workspace/target/release/deps/some-a2bc441ce58bd063)
+==00:00:00:00.773 1411024==
+==00:00:00:00.773 1411024== LEAK SUMMARY:
+==00:00:00:00.773 1411024==    definitely lost: 3,200,000 bytes in 100,000 blocks
+==00:00:00:00.773 1411024==    indirectly lost: 2,400,000 bytes in 100,000 blocks
+==00:00:00:00.773 1411024==      possibly lost: 0 bytes in 0 blocks
+==00:00:00:00.773 1411024==    still reachable: 0 bytes in 0 blocks
+==00:00:00:00.773 1411024==         suppressed: 0 bytes in 0 blocks
+==00:00:00:00.773 1411024==
+==00:00:00:00.773 1411024== For lists of detected and suppressed errors, rerun with: -s
+==00:00:00:00.773 1411024== ERROR SUMMARY: 2 errors from 2 contexts (suppressed: 0 from 0)

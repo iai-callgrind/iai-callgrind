@@ -7,7 +7,7 @@
 # Installation
 
 - [Prerequisites](./installation/prerequisites.md)
-- [Iai-Callgrind](./installation/iai_callgrind.md)
+- [Gungraun](./installation/gungraun.md)
 
 # Benchmarks
 
@@ -49,7 +49,7 @@
 
 - [Basic usage and exit codes](./cli_and_env/basics.md)
 - [Comparing with baselines](./cli_and_env/baselines.md)
-- [Controlling the output of Iai-Callgrind](./cli_and_env/output.md)
+- [Controlling the output of Gungraun](./cli_and_env/output.md)
     - [Customize the output directory](./cli_and_env/output/out_directory.md)
     - [Machine-readable output](./cli_and_env/output/machine_readable.md)
     - [Showing terminal output of benchmarks](./cli_and_env/output/terminal_output.md)

@@ -29,7 +29,7 @@ const TEMPLATE_CONTENT: &str = r#"fn main() {
     panic!("should be replaced by a rendered template");
 }
 "#;
-const SCHEMA_PATH: &str = "iai-callgrind-runner/schemas";
+const SCHEMA_PATH: &str = "gungraun-runner/schemas";
 const SCHEMA_VERSION: &str = "6";
 
 static TEMPLATE_DATA: OnceCell<HashMap<String, minijinja::Value>> = OnceCell::new();
@@ -83,9 +83,9 @@ lazy_static! {
         Regex::new(r"^(##(?: \S+: \S+)+)(\s*)([|].*)$").expect("Regex should compile");
     static ref ABSOLUTE_PATH_RE: Regex =
         Regex::new(r"(\s+)([/][^/]*)+").expect("Regex should compile");
-    // Iai-Callgrind result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
+    // Gungraun result: Success. 2 completed without regressions; 0 regressed; 2 benchmarks finished in 0.296s
     static ref SUMMARY_LINE_RE: Regex =
-        Regex::new(r"^(Iai-Callgrind result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
+        Regex::new(r"^(Gungraun result:.*finished in\s*)([0-9.]+)(s)$").expect("Regex should compile");
     static ref THREAD_PANICKED: Regex =
         Regex::new(r"^(?<start>thread '.*' )(?<pid>\([0-9]+\))?(?<end>\s*panicked at .*)$").expect("Regex should compile");
 }
@@ -210,8 +210,8 @@ impl Benchmark {
         };
 
         Benchmark {
-            home_dir: target_dir.join("iai"),
-            dest_dir: target_dir.join("iai").join(PACKAGE).join(&bench_name),
+            home_dir: target_dir.join("gungraun"),
+            dest_dir: target_dir.join("gungraun").join(PACKAGE).join(&bench_name),
             bench_name,
             name,
             config,
@@ -225,7 +225,7 @@ impl Benchmark {
         }
         let alt_dir = self
             .home_dir
-            .join(env!("IC_BUILD_TRIPLE"))
+            .join(env!("GR_BUILD_TRIPLE"))
             .join(PACKAGE)
             .join(&self.bench_name);
         if alt_dir.is_dir() {
@@ -266,10 +266,10 @@ impl Benchmark {
         capture: bool,
     ) -> BenchmarkOutput {
         let stdio = if capture {
-            std::env::set_var("IAI_CALLGRIND_COLOR", "never");
+            std::env::set_var("GUNGRAUN_COLOR", "never");
             Stdio::piped
         } else {
-            std::env::set_var("IAI_CALLGRIND_COLOR", "auto");
+            std::env::set_var("GUNGRAUN_COLOR", "auto");
             Stdio::inherit
         };
 
@@ -328,9 +328,9 @@ impl Benchmark {
     ) {
         if !group.runs_on.as_ref().map_or(true, |(is_target, target)| {
             if *is_target {
-                target == env!("IC_BUILD_TRIPLE")
+                target == env!("GR_BUILD_TRIPLE")
             } else {
-                target != env!("IC_BUILD_TRIPLE")
+                target != env!("GR_BUILD_TRIPLE")
             }
         }) || !group.rust_version.as_ref().map_or(true, |(cmp, version)| {
             meta.compare_rust_version(*cmp, version)
@@ -347,9 +347,9 @@ impl Benchmark {
             .filter(|r| {
                 r.runs_on.as_ref().map_or(true, |(is_target, target)| {
                     if *is_target {
-                        target == env!("IC_BUILD_TRIPLE")
+                        target == env!("GR_BUILD_TRIPLE")
                     } else {
-                        target != env!("IC_BUILD_TRIPLE")
+                        target != env!("GR_BUILD_TRIPLE")
                     }
                 }) && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
                     meta.compare_rust_version(*cmp, version)
@@ -742,9 +742,7 @@ impl BenchmarkOutput {
                     if caps_1.len() < 40 {
                         format!(
                             "{caps_1}{}{caps_3}",
-                            " ".repeat(
-                                iai_callgrind_runner::runner::format::LEFT_WIDTH - caps_1.len()
-                            )
+                            " ".repeat(gungraun_runner::runner::format::LEFT_WIDTH - caps_1.len())
                         )
                     } else {
                         format!("{caps_1} {caps_3}")
@@ -802,12 +800,12 @@ impl BenchmarkRunner {
     pub fn run(&self) -> Result<(), String> {
         // We need the `summary.json` files to verify that not all costs are zero. Extracting this
         // info from the summary is much easier than doing it from the output.
-        std::env::set_var("IAI_CALLGRIND_SAVE_SUMMARY", "json");
+        std::env::set_var("GUNGRAUN_SAVE_SUMMARY", "json");
         std::env::set_var(
-            "IAI_CALLGRIND_RUNNER",
+            "GUNGRAUN_RUNNER",
             self.metadata
                 .target_directory
-                .join("release/iai-callgrind-runner"),
+                .join("release/gungraun-runner"),
         );
 
         let schema: serde_json::Value = serde_json::from_reader(
@@ -823,7 +821,7 @@ impl BenchmarkRunner {
         let mut scope = json_schema::Scope::new();
         let compiled = scope.compile_and_return(schema, false).unwrap();
 
-        build_iai_callgrind_runner();
+        build_gungraun_runner();
 
         for bench in &self.metadata.benchmarks {
             let num_groups = bench.config.groups.len();
@@ -871,7 +869,7 @@ impl ExpectedRun {
                     summary = Some(file.clone());
                 }
             }
-            // Iai-Callgrind does not produce empty files and if so we treat it as an error
+            // Gungraun does not produce empty files and if so we treat it as an error
             assert!(
                 real_files.remove(&file),
                 "Expected file '{}' does not exist",
@@ -1056,10 +1054,10 @@ impl RunConfig {
     }
 }
 
-fn build_iai_callgrind_runner() {
-    print_info("Building iai-callgrind-runner");
+fn build_gungraun_runner() {
+    print_info("Building gungraun-runner");
     let status = std::process::Command::new(env!("CARGO"))
-        .args(["build", "--package", "iai-callgrind-runner", "--release"])
+        .args(["build", "--package", "gungraun-runner", "--release"])
         .status()
         .unwrap();
     assert!(status.success());

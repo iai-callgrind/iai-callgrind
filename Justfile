@@ -23,7 +23,7 @@ args := ''
 msrv := '1.74.1'
 mdbook_version := '0.4.40'
 required_tools := 'valgrind|the essential tool
-clang|to be able to build iai-callgrind with the client-requests feature'
+clang|to be able to build Gungraun with the client-requests feature'
 cargo_tools := 'cargo-hack
 cargo-minimal-versions'
 tools := 'docker|to be able to run the client request tests
@@ -179,7 +179,7 @@ install-checks:
     [ $failed -eq 1 ] && echo "!!! A required tool was not installed !!! Aborting..."
     exit $failed
 
-# Install everything needed to start working on iai-callgrind (Depends on: install-hooks, install-toolchains, install-checks)
+# Install everything needed to start working on Gungraun (Depends on: install-hooks, install-toolchains, install-checks)
 [group('init workspace')]
 install-workspace: install-hooks install-toolchains show-tips install-checks
 
@@ -188,10 +188,10 @@ install-workspace: install-hooks install-toolchains show-tips install-checks
 build package:
     cargo build -p {{ package }} {{ if args != '' { args } else { '' } }}
 
-# Build iai-callgrind-runner (uses 'cargo')
+# Build gungraun-runner (uses 'cargo')
 [group('build')]
 build-runner:
-    just args=--release build iai-callgrind-runner
+    just args=--release build gungraun-runner
 
 # Build the documentation (Uses: 'cargo')
 [group('build')]
@@ -201,27 +201,27 @@ build-docs:
 # A thorough build of all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
 build-hack: build-hack-runner
-    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner build
+    cargo hack --workspace --feature-powerset --exclude gungraun-runner build
 
-# A thorough build of the iai-callgrind-runner package (Uses: 'cargo-hack')
+# A thorough build of the gungraun-runner package (Uses: 'cargo-hack')
 [group('build')]
 build-hack-runner:
-    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api build
+    cargo hack --package gungraun-runner --feature-powerset --exclude-no-default-features --exclude-features api build
 
 # A build of the tests in all packages with `cargo hack` and the feature powerset (Uses: 'cargo-hack')
 [group('build')]
 build-tests-hack: build-tests-hack-runner
-    cargo hack --workspace --feature-powerset --exclude iai-callgrind-runner test --no-run
+    cargo hack --workspace --feature-powerset --exclude gungraun-runner test --no-run
 
-# A build of the tests in the iai-callgrind-runner package with `cargo hack` (Uses: 'cargo-hack')
+# A build of the tests in the gungraun-runner package with `cargo hack` (Uses: 'cargo-hack')
 [group('build')]
 build-tests-hack-runner:
-    cargo hack --package iai-callgrind-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
+    cargo hack --package gungraun-runner --feature-powerset --exclude-no-default-features --exclude-features api test --no-run
 
-# Delete all iai benchmarks (Uses: 'coreutils')
+# Delete all gungraun benchmarks (Uses: 'coreutils')
 [group('clean')]
 clean:
-    rm -rf target/iai
+    rm -rf target/gungraun
 
 # Run the json summary schema generator and format the resulting file (Uses: 'cargo', 'prettier' or 'npx prettier')
 [group('summary schema')]
@@ -232,12 +232,12 @@ schema-gen:
 # Run the json summary schema generator and diff the generated file with the latest schema file (Uses: 'diff', 'find', 'coreutils')
 [group('summary schema')]
 schema-gen-diff: schema-gen
-    diff {{ schema_path }} `find iai-callgrind-runner/schemas -iname 'summary.*.schema.json' | sort -n | tail -n 1` && rm {{ schema_path }}
+    diff {{ schema_path }} `find gungraun-runner/schemas -iname 'summary.*.schema.json' | sort -n | tail -n 1` && rm {{ schema_path }}
 
 # Run the json summary schema generator and replace the old schema file (Uses: 'coreutils')
 [group('summary schema')]
 schema-gen-move: schema-gen
-    mv {{ schema_path }} `ls -1 iai-callgrind-runner/schemas/summary.*.schema.json | sort -n | tail -n 1`
+    mv {{ schema_path }} `ls -1 gungraun-runner/schemas/summary.*.schema.json | sort -n | tail -n 1`
 
 # Run all tests in a package. (Uses: 'cargo')
 [group('test')]
@@ -254,12 +254,12 @@ test-doc:
 test-ui:
     @echo "Ensure rust-src is installed for the rust toolchain ${RUSTUP_TOOLCHAIN:-{{ msrv }}}"
     rustup component list --toolchain "${RUSTUP_TOOLCHAIN:-{{ msrv }}}" | grep -q '^\s*rust-src\s*.*installed'
-    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package iai-callgrind --test ui_tests --features ui_tests
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" cargo test --package gungraun --test ui_tests --features ui_tests
 
 # Run the UI tests with the MSRV if RUSTUP_TOOLCHAIN is unset and overwrite the error message fixtures (Uses: 'cargo')
 [group('test')]
 test-ui-overwrite:
-    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test --package iai-callgrind --test ui_tests --features ui_tests
+    RUSTUP_TOOLCHAIN="${RUSTUP_TOOLCHAIN:-{{ msrv }}}" TRYBUILD=overwrite cargo test --package gungraun --test ui_tests --features ui_tests
 
 # Test all packages. This excludes client request and benchmark tests which need to be run separately (Uses: 'cargo')
 [group('test')]
@@ -281,12 +281,12 @@ reqs-test target:
 # Run a single benchmark test (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test bench features='': build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
+    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests --bench {{ bench }} {{ if features != '' { '--features ' + features } else { '' } }} {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Run all benchmark tests (Uses: 'coreutils', 'cargo')
 [group('test')]
 bench-test-all: build-runner
-    IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
+    GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests {{ if args != '' { '-- ' + args } else { '' } }}
 
 # Note: A single benchmark may run multiple times depending on the test
 #       configuration. See the `benchmark-tests/benches` folder.
@@ -328,11 +328,11 @@ book-check-version:
 # Run tests for the book. (Uses: 'cargo +stable', 'mdbook')
 [group('guide')]
 book-tests: book-check-version
-    # Avoid the error `multiple candidates for `rlib` dependency `iai_callgrind` found`
+    # Avoid the error `multiple candidates for `rlib` dependency `gungraun` found`
     cargo clean --profile mdbook
     # We need the stable build because mdbook is built with the stable toolchain
     # and to avoid the error `found invalid metadata files for ...`
-    RUSTUP_TOOLCHAIN=stable just args="--all-features --lib --profile=mdbook" build iai-callgrind
+    RUSTUP_TOOLCHAIN=stable just args="--all-features --lib --profile=mdbook" build gungraun
     # The exact values for the environment variables don't matter, we just need
     # them to be present.
     CARGO_MANIFEST_DIR=$(realpath .) CARGO_PKG_NAME="mdbook-tests" mdbook test -L target/mdbook/deps docs/
@@ -356,27 +356,27 @@ book-watch: book-check-version
 [group('guide')]
 book-serve-github: book-check-version
     #!/usr/bin/env -S sh -e
-    serve_dir="/tmp/iai_callgrind_serve_dir"
+    serve_dir="/tmp/gungraun_serve_dir"
     if [[ -e "$serve_dir" ]]; then rm -I "${serve_dir}"/* && rmdir "$serve_dir"; fi
     mkdir "$serve_dir"
     cd "$serve_dir"
-    ln -s "{{ book_build_dir }}" iai-callgrind
+    ln -s "{{ book_build_dir }}" gungraun
     npx nodemon --delay 2.0 --ext 'js,html,css,png,svg,ttf,eot,woff,woff2,txt' --watch "{{ book_build_dir }}" --signal SIGINT --exec 'npx http-server -d false -c-1 -a localhost -p 4000'
 
-# Takes a path to the file with colored output of iai-callgrind and prints the resulting (colored) html for the book to `stdout`. (Uses: 'npx ansi-to-html', 'coreutils', 'sed')
+# Takes a path to the file with colored output of gungraun and prints the resulting (colored) html for the book to `stdout`. (Uses: 'npx ansi-to-html', 'coreutils', 'sed')
 [group('guide')]
 book-term-output path:
     #!/usr/bin/env -S sh -e
     output=$(npx ansi-to-html -f#000 "{{ path }}" | head -c -1 | sed 's/#5F5/#42c142/g')
     echo "<pre><code class=\"hljs\">${output}</code></pre>"
 
-# Bump the iai-callgrind version in the book (Uses: 'sed', 'find')
+# Bump the gungraun version in the book (Uses: 'sed', 'find')
 [group('chore')]
 book-bump old_version new_version:
     #!/usr/bin/env -S sh -e
     old_version_escaped=$(echo {{ old_version }} | sed -E 's/[.]/\\./g')
     # Add new version to versions.js
-    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/iai-callgrind/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
+    sed -Ei 's:(.*<!-- Insert new version here -->.*):\1\n<a href="/gungraun/{{ new_version }}/html/index.html">{{ new_version }}</a>\\:' docs/book/versions.js
     # Set the build directory to new version
     sed -Ei 's:(build-dir\s*=\s*"book)(/'"${old_version_escaped}"')(".*):\1/{{ new_version }}\3:' docs/book.toml
 
@@ -388,7 +388,7 @@ book-bump old_version new_version:
     vprefix="s:v${old_version_escaped}:v{{ new_version }}:g"
     find docs/src/ -type f -iname '*.md' -exec sed -Ei -e "$links" -e "$strings" -e "$at" -e "$flag" -e "$vprefix" '{}' \;
 
-# Bump the version of iai-callgrind (and iai-callgrind-runner, and the guide), iai-callgrind-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
+# Bump the version of gungraun (and gungraun-runner, and the guide), gungraun-macros or the MSRV (Uses: 'cargo', 'grep'; Depends on: book-bump)
 [group('chore')]
 bump config part:
     #!/usr/bin/env -S sh -e
@@ -400,6 +400,6 @@ bump config part:
         echo "Bump book from '${current_version}' to '${new_version}'"
         just book-bump "$current_version" "$new_version"
     fi
-    # We also need the changed version in Cargo.lock. Building iai-callgrind
+    # We also need the changed version in Cargo.lock. Building gungraun
     # should be enough to also update the runner
-    just args="--all-features --lib" build iai-callgrind
+    just args="--all-features --lib" build gungraun

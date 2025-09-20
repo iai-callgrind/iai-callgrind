@@ -4,9 +4,9 @@ fn main() {
     let mut args_iter = std::env::args().skip(1);
     match args_iter.next() {
         Some(value) if value.as_str() == "--thread-in-thread" => {
-            iai_callgrind::client_requests::callgrind::start_instrumentation();
+            gungraun::client_requests::callgrind::start_instrumentation();
             let result = thread_in_thread_with_instrumentation();
-            iai_callgrind::client_requests::callgrind::stop_instrumentation();
+            gungraun::client_requests::callgrind::stop_instrumentation();
             result
         }
         Some(value) => {

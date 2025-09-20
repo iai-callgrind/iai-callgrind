@@ -1,45 +1,45 @@
 <!-- spell-checker: ignore readlink -->
 
-# Contributing to iai-callgrind
+# Contributing to Gungraun
 
-Thank you for your interest in contributing to iai-callgrind!
+Thank you for your interest in contributing to Gungraun!
 
 ## Feature Requests and Bug reports
 
 Feature requests and bug reports should be reported in the [Issue
-Tracker](https://github.com/iai-callgrind/iai-callgrind/issues). Please have a
+Tracker](https://github.com/gungraun/gungraun/issues). Please have a
 look at existing issues with the
-[enhancement](https://github.com/iai-callgrind/iai-callgrind/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
+[enhancement](https://github.com/gungraun/gungraun/issues?q=is%3Aissue+is%3Aopen+label%3Aenhancement)
 or
-[bug](https://github.com/iai-callgrind/iai-callgrind/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
+[bug](https://github.com/gungraun/gungraun/issues?q=is%3Aissue+is%3Aopen+label%3Abug)
 labels.
 
 ## Patches / Pull Requests
 
 All patches have to be sent on GitHub as [pull
-requests](https://github.com/iai-callgrind/iai-callgrind/pulls). Before starting
+requests](https://github.com/gungraun/gungraun/pulls). Before starting
 a pull request, it is best to open an issue first so no efforts are wasted.
 
-If you are looking for a place to start contributing to iai-callgrind, take a
+If you are looking for a place to start contributing to Gungraun, take a
 look at the [help
-wanted](https://github.com/iai-callgrind/iai-callgrind/labels/help%20wanted) or
+wanted](https://github.com/gungraun/gungraun/labels/help%20wanted) or
 [good first
-issue](https://github.com/iai-callgrind/iai-callgrind/labels/good%20first%20issue)
+issue](https://github.com/gungraun/gungraun/labels/good%20first%20issue)
 issues.
 
-The minimum supported version (MSRV) of iai-callgrind is Rust `1.74.1` and all
+The minimum supported version (MSRV) of Gungraun is Rust `1.74.1` and all
 patches are expected to work with the minimum supported version.
 
 All notable changes need to be added to the
-[CHANGELOG](https://github.com/iai-callgrind/iai-callgrind/blob/4f29964c153a2dd20283fb1502db3de630148629/CHANGELOG.md).
+[CHANGELOG](https://github.com/gungraun/gungraun/blob/4f29964c153a2dd20283fb1502db3de630148629/CHANGELOG.md).
 
 ## How to get started
 
 Clone this repo
 
 ```shell
-git clone https://github.com/iai-callgrind/iai-callgrind.git
-cd iai-callgrind
+git clone https://github.com/gungraun/gungraun.git
+cd gungraun
 ```
 
 Working on this project is a piece of cake with
@@ -134,14 +134,14 @@ same:
 
 ## Working on the guide
 
-The main documentation of Iai-Callgrind is in the [guide][Guide]. The source
+The main documentation of Gungraun is in the [guide][Guide]. The source
 code lives in the `docs/src` subdirectory of this repo.
 
 To start working on the guide, ensure you have everything necessary installed
 with `just book-install`. After everything's installed, you need two terminal
 windows. In the first run `just book-watch` and in the second run `just
 book-serve-github`. The second command makes the rendered guide available at
-`http://localhost:4000/iai-callgrind` (this'll redirect you to the
+`http://localhost:4000/gungraun` (this'll redirect you to the
 `index.html`). You can now start making changes to the source code and the
 changes are reflected after a second or two.
 
@@ -149,8 +149,8 @@ Please run `just book-tests` from time to time if you make changes to rust
 codeblocks and especially before pushing to the pr.
 
 Have a look at the existing code blocks for examples. Every rust code block
-requires `# extern crate iai_callgrind;` as first line if you want to access the
-`iai_callgrind` api. Also, ensure to not actually run the benchmark harness with
+requires `# extern crate gungraun;` as first line if you want to access the
+`gungraun` api. Also, ensure to not actually run the benchmark harness with
 
 ```rust
 #...
@@ -172,7 +172,7 @@ full-bench-test $BENCHMARK_NAME` or all with `just full-bench-test-all` (This
 might take a while). See the [`README`](./benchmark-tests/README.md) of the
 benchmark-tests package for more details.
 
-The user interface is tested in `iai-callgrind/tests/ui`. The ui tests error
+The user interface is tested in `gungraun/tests/ui`. The ui tests error
 fixtures are fixed to the MSRV compiler since the compiler error messages differ
 between the rust toolchains. For example to run the ui tests
 
@@ -184,13 +184,13 @@ or overwrite the error message fixtures:
 
 `just test-ui-overwrite`
 
-If you made changes in the `iai-callgrind-runner` package, you can point the
-`IAI_CALLGRIND_RUNNER` environment variable to your modified version of the
-`iai-callgrind-runner` binary and run the benchmark-tests with:
+If you made changes in the `gungraun-runner` package, you can point the
+`GUNGRAUN_RUNNER` environment variable to your modified version of the
+`gungraun-runner` binary and run the benchmark-tests with:
 
 ```shell
-cargo build -p iai-callgrind-runner --release
-IAI_CALLGRIND_RUNNER=$(realpath target/release/iai-callgrind-runner) cargo bench -p benchmark-tests
+cargo build -p gungraun-runner --release
+GUNGRAUN_RUNNER=$(realpath target/release/gungraun-runner) cargo bench -p benchmark-tests
 ```
 
 or with `just` in a single command:
@@ -219,8 +219,8 @@ on the test configuration, benchmarks are sometimes run multiple times.
 
 ## Contact
 
-If there are any outstanding questions about contributing to iai-callgrind, they
-can be asked on the [iai-callgrind issue
-tracker](https://github.com/iai-callgrind/iai-callgrind/issues).
+If there are any outstanding questions about contributing to gungraun, they
+can be asked on the [gungraun issue
+tracker](https://github.com/gungraun/gungraun/issues).
 
-[Guide]: https://iai-callgrind.github.io/iai-callgrind/
+[Guide]: https://gungraun.github.io/gungraun/

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, OutputFormat, Sandbox,
 };
 
@@ -33,8 +33,8 @@ fn check_file_exists(path: &str, should_exist: bool) {
     config = BinaryBenchmarkConfig::default()
         .sandbox(Sandbox::new(true))
 )]
-fn with_sandbox(path: &str, exists: bool) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn with_sandbox(path: &str, exists: bool) -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .arg(path)
         .arg(exists.to_string())
         .build()
@@ -47,8 +47,8 @@ fn with_sandbox(path: &str, exists: bool) -> iai_callgrind::Command {
     setup = check_file_exists,
     teardown = check_file_exists
 )]
-fn without_sandbox(path: &str, should_exist: bool) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn without_sandbox(path: &str, should_exist: bool) -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .arg(path)
         .arg(should_exist.to_string())
         .build()
@@ -67,8 +67,8 @@ fn teardown_directory_and_file() {
 }
 
 #[binary_benchmark(setup = setup_directory_and_file(), teardown = teardown_directory_and_file)]
-fn with_current_dir() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(FILE_EXISTS)
+fn with_current_dir() -> gungraun::Command {
+    gungraun::Command::new(FILE_EXISTS)
         .current_dir("foo")
         .arg("bar.txt")
         .arg("true")

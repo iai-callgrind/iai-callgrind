@@ -1,0 +1,16 @@
+name: Deploy gungraun-macros
+on:
+  push:
+    tags:
+      - "gungraun-macros-v*"
+
+jobs:
+  publish:
+    name: Publish to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Publish gungraun-macros
+        run: cargo publish -p gungraun-macros --token ${{ secrets.CRATES_GITHUB_TOKEN }}

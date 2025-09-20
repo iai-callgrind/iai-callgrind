@@ -2,9 +2,9 @@ use std::fs::File;
 use std::io::{Read, Write};
 use std::path::PathBuf;
 
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
-const GROUP_SETUP_FILE: &str = "/tmp/iai-callgrind.group_setup.tmp";
+const GROUP_SETUP_FILE: &str = "/tmp/gungraun.group_setup.tmp";
 
 #[library_benchmark]
 fn simple_bench() {

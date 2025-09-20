@@ -28,4 +28,4 @@ Regressions:
   test_bench_template::bench_group::bench_bubble_sort regress_cachegrind:
     Cachegrind: Instructions (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
 
-Iai-Callgrind result: Regressed. 1 without regressions; 2 regressed; 3 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 1 without regressions; 2 regressed; 3 benchmarks finished in <__SECONDS__>s

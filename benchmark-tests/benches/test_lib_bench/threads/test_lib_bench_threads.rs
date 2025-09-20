@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::process::Command;
 
 use benchmark_tests::{find_primes_multi_thread, thread_in_thread_with_instrumentation};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Bbv, Callgrind, Dhat, Drd, EntryPoint,
     LibraryBenchmarkConfig, Massif, Memcheck, OutputFormat,
 };
@@ -51,9 +51,9 @@ fn bench_thread_in_subprocess(num_threads: usize) {
         )
 )]
 fn bench_thread_in_thread() -> Vec<u64> {
-    iai_callgrind::client_requests::callgrind::start_instrumentation();
+    gungraun::client_requests::callgrind::start_instrumentation();
     let result = black_box(thread_in_thread_with_instrumentation());
-    iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    gungraun::client_requests::callgrind::stop_instrumentation();
     result
 }
 
@@ -67,12 +67,12 @@ fn bench_thread_in_thread() -> Vec<u64> {
         )
 )]
 fn bench_thread_in_thread_in_subprocess() {
-    iai_callgrind::client_requests::callgrind::start_instrumentation();
+    gungraun::client_requests::callgrind::start_instrumentation();
     Command::new(env!("CARGO_BIN_EXE_thread"))
         .arg("--thread-in-thread")
         .status()
         .unwrap();
-    iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    gungraun::client_requests::callgrind::stop_instrumentation();
 }
 
 library_benchmark_group!(

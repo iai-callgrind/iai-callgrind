@@ -1,9 +1,9 @@
 # spell-checker: ignore polonius
 [workspace]
 members = [
-  "iai-callgrind",
-  "iai-callgrind-runner",
-  "iai-callgrind-macros",
+  "gungraun",
+  "gungraun-runner",
+  "gungraun-macros",
   "benchmark-tests",
   "client-request-tests",
   "schema-gen",
@@ -13,10 +13,19 @@ resolver = "2"
 [workspace.package]
 categories = ["development-tools::profiling", "development-tools::testing"]
 edition = "2021"
-homepage = "https://github.com/iai-callgrind/iai-callgrind"
-keywords = ["iai", "benchmark", "callgrind", "valgrind"]
+homepage = "https://github.com/gungraun/gungraun"
+keywords = [
+  "performance",
+  "benchmark",
+  "profiling",
+  "valgrind",
+  "callgrind",
+  "cachegrind",
+  "dhat",
+  "client-requests",
+]
 license = "Apache-2.0 OR MIT"
-repository = "https://github.com/iai-callgrind/iai-callgrind"
+repository = "https://github.com/gungraun/gungraun"
 rust-version = "1.74.1"
 version = "0.16.1"
 

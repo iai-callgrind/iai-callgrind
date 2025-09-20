@@ -1,4 +1,4 @@
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, EventKind,
     Callgrind, ValgrindTool, Cachegrind, CachegrindMetric
 };
@@ -20,8 +20,8 @@ use iai_callgrind::{
         )
 )]
 #[bench::should_not_run_after_regression(10)]
-fn bench_bubble_sort(start: i32) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_bubble-sort"))
+fn bench_bubble_sort(start: i32) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_bubble-sort"))
         .arg(start.to_string())
         .build()
 }

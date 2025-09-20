@@ -1,6 +1,6 @@
 use std::hint::black_box;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint,
     LibraryBenchmarkConfig, OutputFormat,
 };
@@ -168,8 +168,8 @@ fn bench_library() -> u64 {
         )
 )]
 fn bench_with_client_request() -> u64 {
-    iai_callgrind::client_requests::callgrind::start_instrumentation();
-    iai_callgrind::client_requests::callgrind::toggle_collect();
+    gungraun::client_requests::callgrind::start_instrumentation();
+    gungraun::client_requests::callgrind::toggle_collect();
     black_box(benchmark_tests::fibonacci(10))
 }
 
