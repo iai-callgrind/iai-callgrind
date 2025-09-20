@@ -112,7 +112,7 @@ impl Metadata {
             );
 
             if args.separate_targets {
-                home = home.join(env!("IC_BUILD_TRIPLE").to_ascii_lowercase());
+                home = home.join(env!("GR_BUILD_TRIPLE").to_ascii_lowercase());
             }
             home.join(
                 std::env::var_os(envs::CARGO_PKG_NAME).map_or_else(PathBuf::new, PathBuf::from),

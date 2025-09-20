@@ -77,7 +77,7 @@ pub fn make_mem_noaccess(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::make_mem_noaccess",
         0,
-        bindings::IC_MemcheckClientRequest::IC_MAKE_MEM_NOACCESS,
+        bindings::GR_MemcheckClientRequest::GR_MAKE_MEM_NOACCESS,
         addr as usize,
         len,
         0,
@@ -92,7 +92,7 @@ pub fn make_mem_undefined(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::make_mem_undefined",
         0,
-        bindings::IC_MemcheckClientRequest::IC_MAKE_MEM_UNDEFINED,
+        bindings::GR_MemcheckClientRequest::GR_MAKE_MEM_UNDEFINED,
         addr as usize,
         len,
         0,
@@ -107,7 +107,7 @@ pub fn make_mem_defined(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::make_mem_defined",
         0,
-        bindings::IC_MemcheckClientRequest::IC_MAKE_MEM_DEFINED,
+        bindings::GR_MemcheckClientRequest::GR_MAKE_MEM_DEFINED,
         addr as usize,
         len,
         0,
@@ -125,7 +125,7 @@ pub fn make_mem_defined_if_addressable(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::make_mem_defined_if_addressable",
         0,
-        bindings::IC_MemcheckClientRequest::IC_MAKE_MEM_DEFINED_IF_ADDRESSABLE,
+        bindings::GR_MemcheckClientRequest::GR_MAKE_MEM_DEFINED_IF_ADDRESSABLE,
         addr as usize,
         len,
         0,
@@ -156,7 +156,7 @@ where
     do_client_request!(
         "memcheck::create_block",
         0,
-        bindings::IC_MemcheckClientRequest::IC_CREATE_BLOCK,
+        bindings::GR_MemcheckClientRequest::GR_CREATE_BLOCK,
         addr as usize,
         len,
         desc.as_ref().as_ptr() as usize,
@@ -176,7 +176,7 @@ pub fn discard<T>(handle: BlockHandle) -> usize {
     do_client_request!(
         "memcheck::discard",
         0,
-        bindings::IC_MemcheckClientRequest::IC_DISCARD,
+        bindings::GR_MemcheckClientRequest::GR_DISCARD,
         0,
         handle,
         0,
@@ -194,7 +194,7 @@ pub fn check_mem_is_addressable(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::check_mem_is_addressable",
         0,
-        bindings::IC_MemcheckClientRequest::IC_CHECK_MEM_IS_ADDRESSABLE,
+        bindings::GR_MemcheckClientRequest::GR_CHECK_MEM_IS_ADDRESSABLE,
         addr as usize,
         len,
         0,
@@ -212,7 +212,7 @@ pub fn check_mem_is_defined(addr: *const (), len: usize) -> usize {
     do_client_request!(
         "memcheck::check_mem_is_defined",
         0,
-        bindings::IC_MemcheckClientRequest::IC_CHECK_MEM_IS_DEFINED,
+        bindings::GR_MemcheckClientRequest::GR_CHECK_MEM_IS_DEFINED,
         addr as usize,
         len,
         0,
@@ -230,7 +230,7 @@ pub fn check_value_is_defined<T>(value: &T) -> usize {
     do_client_request!(
         "memcheck::check_value_is_defined",
         0,
-        bindings::IC_MemcheckClientRequest::IC_CHECK_MEM_IS_DEFINED,
+        bindings::GR_MemcheckClientRequest::GR_CHECK_MEM_IS_DEFINED,
         value as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -247,7 +247,7 @@ pub fn check_value_is_defined<T>(value: &T) -> usize {
 pub fn do_leak_check() {
     do_client_request!(
         "memcheck::do_leak_check",
-        bindings::IC_MemcheckClientRequest::IC_DO_LEAK_CHECK,
+        bindings::GR_MemcheckClientRequest::GR_DO_LEAK_CHECK,
         0,
         0,
         0,
@@ -262,7 +262,7 @@ pub fn do_leak_check() {
 pub fn do_added_leak_check() {
     do_client_request!(
         "memcheck::do_added_leak_check",
-        bindings::IC_MemcheckClientRequest::IC_DO_LEAK_CHECK,
+        bindings::GR_MemcheckClientRequest::GR_DO_LEAK_CHECK,
         0,
         1,
         0,
@@ -277,7 +277,7 @@ pub fn do_added_leak_check() {
 pub fn do_changed_leak_check() {
     do_client_request!(
         "memcheck::do_changed_leak_check",
-        bindings::IC_MemcheckClientRequest::IC_DO_LEAK_CHECK,
+        bindings::GR_MemcheckClientRequest::GR_DO_LEAK_CHECK,
         0,
         2,
         0,
@@ -292,7 +292,7 @@ pub fn do_changed_leak_check() {
 pub fn do_new_leak_check() {
     do_client_request!(
         "memcheck::do_new_leak_check",
-        bindings::IC_MemcheckClientRequest::IC_DO_LEAK_CHECK,
+        bindings::GR_MemcheckClientRequest::GR_DO_LEAK_CHECK,
         0,
         3,
         0,
@@ -306,7 +306,7 @@ pub fn do_new_leak_check() {
 pub fn do_quick_leak_check() {
     do_client_request!(
         "memcheck::do_quick_leak_check",
-        bindings::IC_MemcheckClientRequest::IC_DO_LEAK_CHECK,
+        bindings::GR_MemcheckClientRequest::GR_DO_LEAK_CHECK,
         1,
         0,
         0,
@@ -327,7 +327,7 @@ pub fn count_leaks() -> LeakCounts {
     let leaks = LeakCounts::default();
     do_client_request!(
         "memcheck::count_leaks",
-        bindings::IC_MemcheckClientRequest::IC_COUNT_LEAKS,
+        bindings::GR_MemcheckClientRequest::GR_COUNT_LEAKS,
         std::ptr::addr_of!(leaks.leaked) as usize,
         std::ptr::addr_of!(leaks.dubious) as usize,
         std::ptr::addr_of!(leaks.reachable) as usize,
@@ -344,7 +344,7 @@ pub fn count_leak_blocks() -> LeakCounts {
     let leaks = LeakCounts::default();
     do_client_request!(
         "memcheck::count_leak_blocks",
-        bindings::IC_MemcheckClientRequest::IC_COUNT_LEAK_BLOCKS,
+        bindings::GR_MemcheckClientRequest::GR_COUNT_LEAK_BLOCKS,
         std::ptr::addr_of!(leaks.leaked) as usize,
         std::ptr::addr_of!(leaks.dubious) as usize,
         std::ptr::addr_of!(leaks.reachable) as usize,
@@ -376,7 +376,7 @@ pub fn get_vbits(addr: *const (), bits: &mut [u8], len: usize) -> usize {
     do_client_request!(
         "memcheck::get_vbits",
         0,
-        bindings::IC_MemcheckClientRequest::IC_GET_VBITS,
+        bindings::GR_MemcheckClientRequest::GR_GET_VBITS,
         addr as usize,
         bits.as_ptr() as usize,
         len,
@@ -406,7 +406,7 @@ pub fn set_vbits(addr: *const (), bits: &[u8], len: usize) -> usize {
     do_client_request!(
         "memcheck::set_vbits",
         0,
-        bindings::IC_MemcheckClientRequest::IC_SET_VBITS,
+        bindings::GR_MemcheckClientRequest::GR_SET_VBITS,
         addr as usize,
         bits.as_ptr() as usize,
         len,
@@ -421,7 +421,7 @@ pub fn disable_addr_error_reporting_in_range(addr: *const (), len: usize) -> usi
     do_client_request!(
         "memcheck::disable_addr_error_reporting_in_range",
         0,
-        bindings::IC_MemcheckClientRequest::IC_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE,
+        bindings::GR_MemcheckClientRequest::GR_DISABLE_ADDR_ERROR_REPORTING_IN_RANGE,
         addr as usize,
         len,
         0,
@@ -436,7 +436,7 @@ pub fn enable_addr_error_reporting_in_range(addr: *const (), len: usize) -> usiz
     do_client_request!(
         "memcheck::enable_addr_error_reporting_in_range",
         0,
-        bindings::IC_MemcheckClientRequest::IC_ENABLE_ADDR_ERROR_REPORTING_IN_RANGE,
+        bindings::GR_MemcheckClientRequest::GR_ENABLE_ADDR_ERROR_REPORTING_IN_RANGE,
         addr as usize,
         len,
         0,

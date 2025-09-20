@@ -2,7 +2,7 @@
 
 fn main() {
     println!(
-        "cargo:rustc-env=IC_BUILD_TRIPLE={}",
+        "cargo:rustc-env=GR_BUILD_TRIPLE={}",
         std::env::var("TARGET").unwrap()
     );
 }

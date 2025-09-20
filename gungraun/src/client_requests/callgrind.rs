@@ -55,7 +55,7 @@ use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 pub fn dump_stats() {
     do_client_request!(
         "callgrind::dump_stats",
-        bindings::IC_CallgrindClientRequest::IC_DUMP_STATS,
+        bindings::GR_CallgrindClientRequest::GR_DUMP_STATS,
         0,
         0,
         0,
@@ -77,7 +77,7 @@ where
 {
     do_client_request!(
         "callgrind::dump_stats_at",
-        bindings::IC_CallgrindClientRequest::IC_DUMP_STATS_AT,
+        bindings::GR_CallgrindClientRequest::GR_DUMP_STATS_AT,
         c_str.as_ref().as_ptr() as usize,
         0,
         0,
@@ -93,7 +93,7 @@ where
 pub fn zero_stats() {
     do_client_request!(
         "callgrind::zero_stats",
-        bindings::IC_CallgrindClientRequest::IC_ZERO_STATS,
+        bindings::GR_CallgrindClientRequest::GR_ZERO_STATS,
         0,
         0,
         0,
@@ -113,7 +113,7 @@ pub fn zero_stats() {
 pub fn toggle_collect() {
     do_client_request!(
         "callgrind::toggle_collect",
-        bindings::IC_CallgrindClientRequest::IC_TOGGLE_COLLECT,
+        bindings::GR_CallgrindClientRequest::GR_TOGGLE_COLLECT,
         0,
         0,
         0,
@@ -131,7 +131,7 @@ pub fn toggle_collect() {
 pub fn start_instrumentation() {
     do_client_request!(
         "callgrind::start_instrumentation",
-        bindings::IC_CallgrindClientRequest::IC_START_INSTRUMENTATION,
+        bindings::GR_CallgrindClientRequest::GR_START_INSTRUMENTATION,
         0,
         0,
         0,
@@ -150,7 +150,7 @@ pub fn start_instrumentation() {
 pub fn stop_instrumentation() {
     do_client_request!(
         "callgrind::stop_instrumentation",
-        bindings::IC_CallgrindClientRequest::IC_STOP_INSTRUMENTATION,
+        bindings::GR_CallgrindClientRequest::GR_STOP_INSTRUMENTATION,
         0,
         0,
         0,

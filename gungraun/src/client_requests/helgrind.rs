@@ -58,7 +58,7 @@ use super::{bindings, fatal_error};
 pub fn clean_memory(start: *const (), len: usize) {
     do_client_request!(
         "helgrind::clean_memory",
-        bindings::IC_HelgrindClientRequest::IC_HG_CLEAN_MEMORY,
+        bindings::GR_HelgrindClientRequest::GR_HG_CLEAN_MEMORY,
         start as usize,
         len,
         0,
@@ -89,7 +89,7 @@ pub fn clean_memory(start: *const (), len: usize) {
 pub fn annotate_happens_before(obj: *const ()) {
     do_client_request!(
         "helgrind::annotate_happens_before",
-        bindings::IC_HelgrindClientRequest::IC_HG_USERSO_SEND_PRE,
+        bindings::GR_HelgrindClientRequest::GR_HG_USERSO_SEND_PRE,
         obj as usize,
         0,
         0,
@@ -103,7 +103,7 @@ pub fn annotate_happens_before(obj: *const ()) {
 pub fn annotate_happens_after(obj: *const ()) {
     do_client_request!(
         "helgrind::annotate_happens_after",
-        bindings::IC_HelgrindClientRequest::IC_HG_USERSO_RECV_POST,
+        bindings::GR_HelgrindClientRequest::GR_HG_USERSO_RECV_POST,
         obj as usize,
         0,
         0,
@@ -126,7 +126,7 @@ pub fn annotate_happens_after(obj: *const ()) {
 pub fn annotate_happens_before_forget_all(obj: *const ()) {
     do_client_request!(
         "helgrind::annotate_happens_before_forget_all",
-        bindings::IC_HelgrindClientRequest::IC_HG_USERSO_FORGET_ALL,
+        bindings::GR_HelgrindClientRequest::GR_HG_USERSO_FORGET_ALL,
         obj as usize,
         0,
         0,
@@ -145,7 +145,7 @@ pub fn annotate_happens_before_forget_all(obj: *const ()) {
 pub fn annotate_new_memory(addr: *const (), size: usize) {
     do_client_request!(
         "helgrind::annotate_new_memory",
-        bindings::IC_HelgrindClientRequest::IC_HG_CLEAN_MEMORY,
+        bindings::GR_HelgrindClientRequest::GR_HG_CLEAN_MEMORY,
         addr as usize,
         size,
         0,
@@ -167,7 +167,7 @@ pub fn annotate_new_memory(addr: *const (), size: usize) {
 pub fn annotate_rwlock_create(lock: *const ()) {
     do_client_request!(
         "helgrind::annotate_rwlock_create",
-        bindings::IC_HelgrindClientRequest::IC_HG_PTHREAD_RWLOCK_INIT_POST,
+        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_INIT_POST,
         lock as usize,
         0,
         0,
@@ -183,7 +183,7 @@ pub fn annotate_rwlock_create(lock: *const ()) {
 pub fn annotate_rwlock_destroy(lock: *const ()) {
     do_client_request!(
         "helgrind::annotate_rwlock_destroy",
-        bindings::IC_HelgrindClientRequest::IC_HG_PTHREAD_RWLOCK_INIT_POST,
+        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_INIT_POST,
         lock as usize,
         0,
         0,
@@ -201,7 +201,7 @@ pub fn annotate_rwlock_destroy(lock: *const ()) {
 pub fn annotate_rwlock_acquired(lock: *const (), is_writer_lock: bool) {
     do_client_request!(
         "helgrind::annotate_rwlock_acquired",
-        bindings::IC_HelgrindClientRequest::IC_HG_PTHREAD_RWLOCK_ACQUIRED,
+        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_ACQUIRED,
         lock as usize,
         usize::from(is_writer_lock),
         0,
@@ -219,7 +219,7 @@ pub fn annotate_rwlock_acquired(lock: *const (), is_writer_lock: bool) {
 pub fn annotate_rwlock_released(lock: *const (), is_writer_lock: bool) {
     do_client_request!(
         "helgrind::annotate_rwlock_released",
-        bindings::IC_HelgrindClientRequest::IC_HG_PTHREAD_RWLOCK_RELEASED,
+        bindings::GR_HelgrindClientRequest::GR_HG_PTHREAD_RWLOCK_RELEASED,
         lock as usize,
         usize::from(is_writer_lock),
         0,

@@ -513,10 +513,10 @@ pub type RawFd = cty::c_int;
 /// version 3.5 or earlier. `VALGRIND_VERSION` is None is this case, else it is a tuple `(MAJOR,
 /// MINOR)`
 pub const VALGRIND_VERSION: Option<(u32, u32)> = {
-    if bindings::IC_VALGRIND_MAJOR == 0 {
+    if bindings::GR_VALGRIND_MAJOR == 0 {
         None
     } else {
-        Some((bindings::IC_VALGRIND_MAJOR, bindings::IC_VALGRIND_MINOR))
+        Some((bindings::GR_VALGRIND_MAJOR, bindings::GR_VALGRIND_MINOR))
     }
 };
 

@@ -58,7 +58,7 @@ use super::{bindings, fatal_error};
 pub fn ad_hoc_event(weight: usize) {
     do_client_request!(
         "dhat::ad_hoc_event",
-        bindings::IC_DHATClientRequest::IC_DHAT_AD_HOC_EVENT,
+        bindings::GR_DHATClientRequest::GR_DHAT_AD_HOC_EVENT,
         weight,
         0,
         0,
@@ -82,7 +82,7 @@ pub fn ad_hoc_event(weight: usize) {
 pub fn histogram_memory(addr: *const ()) {
     do_client_request!(
         "dhat::histogram_memory",
-        bindings::IC_DHATClientRequest::IC_DHAT_HISTOGRAM_MEMORY,
+        bindings::GR_DHATClientRequest::GR_DHAT_HISTOGRAM_MEMORY,
         addr as usize,
         0,
         0,

@@ -225,7 +225,7 @@ impl Benchmark {
         }
         let alt_dir = self
             .home_dir
-            .join(env!("IC_BUILD_TRIPLE"))
+            .join(env!("GR_BUILD_TRIPLE"))
             .join(PACKAGE)
             .join(&self.bench_name);
         if alt_dir.is_dir() {
@@ -328,9 +328,9 @@ impl Benchmark {
     ) {
         if !group.runs_on.as_ref().map_or(true, |(is_target, target)| {
             if *is_target {
-                target == env!("IC_BUILD_TRIPLE")
+                target == env!("GR_BUILD_TRIPLE")
             } else {
-                target != env!("IC_BUILD_TRIPLE")
+                target != env!("GR_BUILD_TRIPLE")
             }
         }) || !group.rust_version.as_ref().map_or(true, |(cmp, version)| {
             meta.compare_rust_version(*cmp, version)
@@ -347,9 +347,9 @@ impl Benchmark {
             .filter(|r| {
                 r.runs_on.as_ref().map_or(true, |(is_target, target)| {
                     if *is_target {
-                        target == env!("IC_BUILD_TRIPLE")
+                        target == env!("GR_BUILD_TRIPLE")
                     } else {
-                        target != env!("IC_BUILD_TRIPLE")
+                        target != env!("GR_BUILD_TRIPLE")
                     }
                 }) && r.rust_version.as_ref().map_or(true, |(cmp, version)| {
                     meta.compare_rust_version(*cmp, version)

@@ -62,7 +62,7 @@ pub fn get_valgrind_threadid() -> usize {
     do_client_request!(
         "drd::get_valgrind_threadid",
         0,
-        bindings::IC_DRDClientRequest::IC_DRD_GET_VALGRIND_THREAD_ID,
+        bindings::GR_DRDClientRequest::GR_DRD_GET_VALGRIND_THREAD_ID,
         0,
         0,
         0,
@@ -80,7 +80,7 @@ pub fn get_drd_threadid() -> usize {
     do_client_request!(
         "drd::get_drd_threadid",
         0,
-        bindings::IC_DRDClientRequest::IC_DRD_GET_DRD_THREAD_ID,
+        bindings::GR_DRDClientRequest::GR_DRD_GET_DRD_THREAD_ID,
         0,
         0,
         0,
@@ -98,7 +98,7 @@ pub fn get_drd_threadid() -> usize {
 pub fn ignore_var<T>(var: &T) {
     do_client_request!(
         "drd::ignore_var",
-        bindings::IC_DRDClientRequest::IC_DRD_START_SUPPRESSION,
+        bindings::GR_DRDClientRequest::GR_DRD_START_SUPPRESSION,
         var as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -113,7 +113,7 @@ pub fn ignore_var<T>(var: &T) {
 pub fn stop_ignoring_var<T>(var: &T) {
     do_client_request!(
         "drd::stop_ignoring_var",
-        bindings::IC_DRDClientRequest::IC_DRD_FINISH_SUPPRESSION,
+        bindings::GR_DRDClientRequest::GR_DRD_FINISH_SUPPRESSION,
         var as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -132,7 +132,7 @@ pub fn stop_ignoring_var<T>(var: &T) {
 pub fn trace_var<T>(var: &T) {
     do_client_request!(
         "drd::trace_var",
-        bindings::IC_DRDClientRequest::IC_DRD_START_TRACE_ADDR,
+        bindings::GR_DRDClientRequest::GR_DRD_START_TRACE_ADDR,
         var as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -146,7 +146,7 @@ pub fn trace_var<T>(var: &T) {
 pub fn stop_tracing_var<T>(var: &T) {
     do_client_request!(
         "drd::stop_tracing_var",
-        bindings::IC_DRDClientRequest::IC_DRD_STOP_TRACE_ADDR,
+        bindings::GR_DRDClientRequest::GR_DRD_STOP_TRACE_ADDR,
         var as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -208,7 +208,7 @@ pub fn annotate_rwlock_released(lock: *const (), is_writer_lock: bool) {
 pub fn annotate_benign_race<T>(addr: &T) {
     do_client_request!(
         "drd::annotate_benign_race",
-        bindings::IC_DRDClientRequest::IC_DRD_START_SUPPRESSION,
+        bindings::GR_DRDClientRequest::GR_DRD_START_SUPPRESSION,
         addr as *const T as usize,
         core::mem::size_of::<T>(),
         0,
@@ -224,7 +224,7 @@ pub fn annotate_benign_race<T>(addr: &T) {
 pub fn annotate_benign_race_sized<T>(addr: &T, size: usize) {
     do_client_request!(
         "drd::annotate_benign_race_sized",
-        bindings::IC_DRDClientRequest::IC_DRD_START_SUPPRESSION,
+        bindings::GR_DRDClientRequest::GR_DRD_START_SUPPRESSION,
         addr as *const T as usize,
         size,
         0,
@@ -238,7 +238,7 @@ pub fn annotate_benign_race_sized<T>(addr: &T, size: usize) {
 pub fn annotate_ignore_reads_begin() {
     do_client_request!(
         "drd::annotate_ignore_reads_begin",
-        bindings::IC_DRDClientRequest::IC_DRD_RECORD_LOADS,
+        bindings::GR_DRDClientRequest::GR_DRD_RECORD_LOADS,
         0,
         0,
         0,
@@ -252,7 +252,7 @@ pub fn annotate_ignore_reads_begin() {
 pub fn annotate_ignore_reads_end() {
     do_client_request!(
         "drd::annotate_ignore_reads_end",
-        bindings::IC_DRDClientRequest::IC_DRD_RECORD_LOADS,
+        bindings::GR_DRDClientRequest::GR_DRD_RECORD_LOADS,
         1,
         0,
         0,
@@ -266,7 +266,7 @@ pub fn annotate_ignore_reads_end() {
 pub fn annotate_ignore_writes_begin() {
     do_client_request!(
         "drd::annotate_ignore_writes_begin",
-        bindings::IC_DRDClientRequest::IC_DRD_RECORD_STORES,
+        bindings::GR_DRDClientRequest::GR_DRD_RECORD_STORES,
         0,
         0,
         0,
@@ -280,7 +280,7 @@ pub fn annotate_ignore_writes_begin() {
 pub fn annotate_ignore_writes_end() {
     do_client_request!(
         "drd::annotate_ignore_writes_end",
-        bindings::IC_DRDClientRequest::IC_DRD_RECORD_STORES,
+        bindings::GR_DRDClientRequest::GR_DRD_RECORD_STORES,
         1,
         0,
         0,
@@ -308,7 +308,7 @@ pub fn annotate_ignore_reads_and_writes_end() {
 pub fn annotate_new_memory(addr: *const (), size: usize) {
     do_client_request!(
         "drd::annotate_new_memory",
-        bindings::IC_DRDClientRequest::IC_DRD_CLEAN_MEMORY,
+        bindings::GR_DRDClientRequest::GR_DRD_CLEAN_MEMORY,
         addr as usize,
         size,
         0,
@@ -324,7 +324,7 @@ pub fn annotate_new_memory(addr: *const (), size: usize) {
 pub fn annotate_trace_memory(addr: *const ()) {
     do_client_request!(
         "drd::annotate_trace_memory",
-        bindings::IC_DRDClientRequest::IC_DRD_START_TRACE_ADDR,
+        bindings::GR_DRDClientRequest::GR_DRD_START_TRACE_ADDR,
         addr as usize,
         core::mem::size_of::<cty::c_char>(),
         0,
@@ -343,7 +343,7 @@ where
 {
     do_client_request!(
         "drd::annotate_thread_name",
-        bindings::IC_DRDClientRequest::IC_DRD_SET_THREAD_NAME,
+        bindings::GR_DRDClientRequest::GR_DRD_SET_THREAD_NAME,
         name.as_ref().as_ptr() as usize,
         0,
         0,

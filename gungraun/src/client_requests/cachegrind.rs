@@ -53,7 +53,7 @@ use super::{bindings, fatal_error, valgrind_do_client_request_stmt};
 pub fn start_instrumentation() {
     do_client_request!(
         "cachegrind::start_instrumentation",
-        bindings::IC_CachegrindClientRequest::IC_CG_START_INSTRUMENTATION,
+        bindings::GR_CachegrindClientRequest::GR_CG_START_INSTRUMENTATION,
         0,
         0,
         0,
@@ -70,7 +70,7 @@ pub fn start_instrumentation() {
 pub fn stop_instrumentation() {
     do_client_request!(
         "cachegrind::stop_instrumentation",
-        bindings::IC_CachegrindClientRequest::IC_CG_STOP_INSTRUMENTATION,
+        bindings::GR_CachegrindClientRequest::GR_CG_STOP_INSTRUMENTATION,
         0,
         0,
         0,
