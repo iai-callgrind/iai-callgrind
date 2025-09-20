@@ -15,9 +15,9 @@ The different levels where a `LibraryBenchmarkConfig` can be specified.
 * At top-level with the `main!` macro
 
 ```rust
-# extern crate iai_callgrind;
-# use iai_callgrind::{library_benchmark, library_benchmark_group};
-use iai_callgrind::{main, LibraryBenchmarkConfig};
+# extern crate gungraun;
+# use gungraun::{library_benchmark, library_benchmark_group};
+use gungraun::{main, LibraryBenchmarkConfig};
 
 # #[library_benchmark] fn bench() {}
 # library_benchmark_group!(name = my_group; benchmarks = bench);
@@ -32,9 +32,9 @@ main!(
 * At group-level in the `library_benchmark_group!` macro
 
 ```rust
-# extern crate iai_callgrind;
-# use iai_callgrind::library_benchmark;
-use iai_callgrind::{main, LibraryBenchmarkConfig, library_benchmark_group};
+# extern crate gungraun;
+# use gungraun::library_benchmark;
+use gungraun::{main, LibraryBenchmarkConfig, library_benchmark_group};
 
 # #[library_benchmark] fn bench() {}
 library_benchmark_group!(
@@ -51,14 +51,14 @@ main!(library_benchmark_groups = my_group);
 * At `#[library_benchmark]` level
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     main, LibraryBenchmarkConfig, library_benchmark_group, library_benchmark
 };
 use std::hint::black_box;
 
-#[library_benchmark(config = LibraryBenchmarkConfig::default())] 
+#[library_benchmark(config = LibraryBenchmarkConfig::default())]
 fn bench() {
     /* ... */
 }
@@ -77,17 +77,17 @@ main!(library_benchmark_groups = my_group);
 * and at `#[bench]`, `#[benches]` level
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     main, LibraryBenchmarkConfig, library_benchmark_group, library_benchmark
 };
 use std::hint::black_box;
 
-#[library_benchmark] 
+#[library_benchmark]
 #[bench::some_id(args = (1, 2), config = LibraryBenchmarkConfig::default())]
 #[benches::multiple(
-    args = [(3, 4), (5, 6)], 
+    args = [(3, 4), (5, 6)],
     config = LibraryBenchmarkConfig::default()
 )]
 fn bench(a: u8, b: u8) {

@@ -1,9 +1,9 @@
 # Changing the logging output
 
-Iai-Callgrind uses [env_logger](https://docs.rs/env_logger/latest/env_logger/) and the
+Gungraun uses [env_logger](https://docs.rs/env_logger/latest/env_logger/) and the
 default logging level `WARN`. To set the logging level to something different,
-set the environment variable `IAI_CALLGRIND_LOG` for example to
-`IAI_CALLGRIND_LOG=DEBUG`. Accepted values are:
+set the environment variable `GUNGRAUN_LOG` for example to
+`GUNGRAUN_LOG=DEBUG`. Accepted values are:
 
 `error`, `warn` (default), `info`, `debug`, `trace`.
 

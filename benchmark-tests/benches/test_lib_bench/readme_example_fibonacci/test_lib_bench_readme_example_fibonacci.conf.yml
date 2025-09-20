@@ -18,11 +18,11 @@ groups:
           files: expected_files.test_separate_targets_x86_64.2b.yml
         runs_on: "x86_64-unknown-linux-gnu"
   - runs:
-      - args: ["--home=/tmp/iai-callgrind"]
+      - args: ["--home=/tmp/gungraun"]
         expected:
           files: expected_files.test_home.3a.yml
         rmdirs:
-          - /tmp/iai-callgrind
-      - args: ["--home=/tmp/iai-callgrind"]
+          - /tmp/gungraun
+      - args: ["--home=/tmp/gungraun"]
         expected:
           files: expected_files.test_home.3b.yml

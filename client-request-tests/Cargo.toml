@@ -1,7 +1,7 @@
 [package]
 authors = ["Joining7943 <joining@posteo.de>"]
 categories.workspace = true
-description = "Tests for iai-callgrind client requests"
+description = "Tests for gungraun client requests"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
@@ -18,7 +18,7 @@ fs_extra = { workspace = true }
 
 [dependencies]
 cty = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind", version = "=0.16.1", default-features = false, features = [
+gungraun = { path = "../gungraun", version = "=0.16.1", default-features = false, features = [
   "client_requests_defs",
 ] }
 lazy_static = { workspace = true }
@@ -29,7 +29,7 @@ which = { workspace = true }
 [dev-dependencies]
 assert_cmd = { workspace = true }
 fs_extra = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind", version = "=0.16.1", default-features = false, features = [
+gungraun = { path = "../gungraun", version = "=0.16.1", default-features = false, features = [
   "client_requests",
 ] }
 predicates = { workspace = true }

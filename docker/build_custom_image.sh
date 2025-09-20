@@ -16,9 +16,9 @@ if ! grep 'libc6-dbg' /linux-image.sh; then
   sed -Ei 's#kversion=5.10.0-26#kversion=5.10.0-30#' /linux-image.sh
 fi
 
-case $IAI_CALLGRIND_CROSS_TARGET in
+case $GUNGRAUN_CROSS_TARGET in
 riscv64gc-unknown-linux-gnu) arch="riscv64" ;;
-*) arch="${IAI_CALLGRIND_CROSS_TARGET%%-*}" ;;
+*) arch="${GUNGRAUN_CROSS_TARGET%%-*}" ;;
 esac
 
 /linux-image.sh "$arch"

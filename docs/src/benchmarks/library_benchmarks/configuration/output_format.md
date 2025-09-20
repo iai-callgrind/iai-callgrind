@@ -2,7 +2,7 @@
 
 # Output Format
 
-The Iai-Callgrind output can be customized with [command-line
+The Gungraun output can be customized with [command-line
 arguments](../../../cli_and_env/output.md). But, the fine-grained terminal
 output format is adjusted in the benchmark itself. For example [truncating
 the description][`OutputFormat.truncate_description`], [showing a
@@ -10,12 +10,12 @@ grid][`OutputFormat.show_grid`], .... Please read the [docs][`OutputFormat`] for
 further details.
 
 In this section, I want to point out the possibility to show the cache misses,
-and in the same manner cache miss rates and cache hit rates in the Iai-Callgrind
+and in the same manner cache miss rates and cache hit rates in the Gungraun
 output.
 
 ## Showing cache misses
 
-A default Iai-Callgrind benchmark run displays the following metrics:
+A default Gungraun benchmark run displays the following metrics:
 
 <pre><code class="hljs"><span style="color:#0A0">test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>1734</b>|1734                 (<span style="color:#555">No change</span>)
@@ -25,7 +25,7 @@ A default Iai-Callgrind benchmark run displays the following metrics:
 <span style="color:#555">  </span>Total read+write:                    <b>2362</b>|2362                 (<span style="color:#555">No change</span>)
 <span style="color:#555">  </span>Estimated Cycles:                    <b>2464</b>|2464                 (<span style="color:#555">No change</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The cache and ram hits, `Total read+write` and `Estimated Cycles` are actually
 not part of the original collected callgrind metrics but calculated from them.
@@ -34,9 +34,9 @@ specifying the output format for example at top-level for all benchmarks in the
 same file in the `main!` macro:
 
 ```rust
-# extern crate iai_callgrind;
-# use iai_callgrind::{library_benchmark, library_benchmark_group};
-use iai_callgrind::{main, LibraryBenchmarkConfig, CallgrindMetrics, Callgrind};
+# extern crate gungraun;
+# use gungraun::{library_benchmark, library_benchmark_group};
+use gungraun::{main, LibraryBenchmarkConfig, CallgrindMetrics, Callgrind};
 
 # #[library_benchmark] fn bench() {}
 # library_benchmark_group!(name = my_group; benchmarks = bench);
@@ -52,9 +52,9 @@ main!(
 ```
 
 or by using the command-line argument `--callgrind-metrics=@all` or the
-environment variable `IAI_CALLGRIND_CALLGRIND_METRICS=@all`.
+environment variable `GUNGRAUN_CALLGRIND_METRICS=@all`.
 
-The Iai-Callgrind output will then show all cache metrics:
+The Gungraun output will then show all cache metrics:
 
 <pre><code class="hljs"><span style="color:#0A0">test_lib_bench_readme_example_fibonacci::bench_fibonacci_group::bench_fibonacci</span> <span style="color:#0AA">short</span><span style="color:#0AA">:</span><b><span style="color:#00A">10</span></b>
 <span style="color:#555">  </span>Instructions:                        <b>1734</b>|N/A                  (<span style="color:#555">*********</span>)
@@ -80,7 +80,7 @@ The Iai-Callgrind output will then show all cache metrics:
 <span style="color:#555">  </span>Total read+write:                    <b>2362</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                    <b>2464</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.48898s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.48898s</code></pre>
 
 The callgrind output format can be fully customized showing only the metrics
 you're interested in and in any order. The docs of
@@ -99,11 +99,11 @@ Benchmarks which show variances in the output of the metrics can be configured
 to tolerate a specific margin in the benchmark output:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 use std::collections::HashMap;
 use std::hint::black_box;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig, OutputFormat,
 };
 
@@ -135,9 +135,9 @@ main!(library_benchmark_groups = my_group);
 ```
 
 or by using the command-line argument `--tolerance=0.9` (or
-`IAI_CALLGRIND_TOLERANCE=0.9`).
+`GUNGRAUN_TOLERANCE=0.9`).
 
-The second or any following Iai-Callgrind run might then show something like
+The second or any following Gungraun run might then show something like
 that:
 
 <pre><code class="hljs"><span style="color:#0A0">lib_bench_tolerance::my_group::bench_hash_map</span> <span style="color:#0AA">tolerance</span><span style="color:#0AA">:</span><b><span style="color:#00A">make_hashmap(100)</span></b>
@@ -148,7 +148,7 @@ that:
 <span style="color:#555">  </span>Total read+write:                   <b>26417</b>|26145                (<b><span style="color:#F55">+1.04035%</span></b>) [<b><span style="color:#F55">+1.01040x</span></b>]
 <span style="color:#555">  </span>Estimated Cycles:                   <b>27165</b>|26893                (<b><span style="color:#F55">+1.01142%</span></b>) [<b><span style="color:#F55">+1.01011x</span></b>]
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.15735s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.15735s</code></pre>
 
 and `Instructions` displays `Tolerance` instead of a difference.
 

@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_worst_case_array};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Cachegrind, CachegrindMetric,
     CachegrindMetrics, Callgrind, CallgrindMetrics, Dhat, DhatMetric, Drd, EntryPoint, ErrorMetric,
     EventKind, Helgrind, LibraryBenchmarkConfig, Memcheck, OutputFormat, ValgrindTool,

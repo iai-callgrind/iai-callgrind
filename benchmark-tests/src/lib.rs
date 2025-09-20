@@ -60,11 +60,11 @@ pub fn find_primes_multi_thread_with_instrumentation(num_threads: usize) -> Vec<
     let mut low = 0;
     for _ in 0..num_threads {
         let handle = std::thread::spawn(move || {
-            iai_callgrind::client_requests::callgrind::start_instrumentation();
-            iai_callgrind::client_requests::callgrind::toggle_collect();
+            gungraun::client_requests::callgrind::start_instrumentation();
+            gungraun::client_requests::callgrind::toggle_collect();
             let result = find_primes(low, low + 10000);
-            iai_callgrind::client_requests::callgrind::toggle_collect();
-            iai_callgrind::client_requests::callgrind::stop_instrumentation();
+            gungraun::client_requests::callgrind::toggle_collect();
+            gungraun::client_requests::callgrind::stop_instrumentation();
             result
         });
         handles.push(handle);
@@ -90,10 +90,10 @@ pub fn thread_in_thread_with_instrumentation() -> Vec<u64> {
     let low = 0;
     let high = 10000;
     let handle = std::thread::spawn(move || {
-        iai_callgrind::client_requests::callgrind::start_instrumentation();
+        gungraun::client_requests::callgrind::start_instrumentation();
         let handle = std::thread::spawn(move || find_primes(low, high));
         let joined = handle.join().unwrap();
-        iai_callgrind::client_requests::callgrind::stop_instrumentation();
+        gungraun::client_requests::callgrind::stop_instrumentation();
         joined
     });
     let primes = handle.join().unwrap();

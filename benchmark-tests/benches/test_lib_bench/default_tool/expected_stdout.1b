@@ -264,4 +264,4 @@ test_lib_bench_default_tool::my_group::default_tool_with_another_tool bbv_and_ma
   ======= MASSIF =======================================================================
   Command: <__COMMAND__>
 
-Iai-Callgrind result: Ok. 24 without regressions; 0 regressed; 24 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 24 without regressions; 0 regressed; 0 filtered; 24 benchmarks finished in <__SECONDS__>s

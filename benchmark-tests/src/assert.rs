@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use anyhow::{anyhow, Result};
-use iai_callgrind::ValgrindTool;
-use iai_callgrind_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
-use iai_callgrind_runner::runner::callgrind::parser::CallgrindParser;
-use iai_callgrind_runner::runner::common::ModulePath;
-use iai_callgrind_runner::runner::summary::{BaselineKind, BenchmarkSummary};
-use iai_callgrind_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
+use gungraun::ValgrindTool;
+use gungraun_runner::runner::callgrind::hashmap_parser::{CallgrindMap, HashMapParser};
+use gungraun_runner::runner::callgrind::parser::CallgrindParser;
+use gungraun_runner::runner::common::ModulePath;
+use gungraun_runner::runner::summary::{BaselineKind, BenchmarkSummary};
+use gungraun_runner::runner::tool::path::{ToolOutputPath, ToolOutputPathKind};
 
 use crate::common::Summary;
 
@@ -31,7 +31,7 @@ impl Assert {
         let meta = cargo_metadata::MetadataCommand::new().exec()?;
         let target_dir = meta
             .workspace_root
-            .join("target/iai")
+            .join("target/gungraun")
             .join(package)
             .into_std_path_buf();
 
@@ -64,7 +64,7 @@ impl Assert {
     /// Asserts that `assert` returns true and panics if it returns false
     ///
     /// `assert` takes the deserialized json from the`summary.json` as input and returns a boolean.
-    /// The input is the [`iai_callgrind_runner::runner::summary::BenchmarkSummary`] struct.
+    /// The input is the [`gungraun_runner::runner::summary::BenchmarkSummary`] struct.
     ///
     /// # Errors
     ///
@@ -85,7 +85,7 @@ impl Assert {
     /// Asserts that `assert` returns true and panics if it returns false
     ///
     /// The `assert` closure can make assertions based on the
-    /// [`iai_callgrind_runner::runner::callgrind::hashmap_parser::CallgrindMap`]. The assert
+    /// [`gungraun_runner::runner::callgrind::hashmap_parser::CallgrindMap`]. The assert
     /// function is supposed to return a boolean.
     ///
     /// In the presence of multiple output files, threads, subprocesses only the total can be

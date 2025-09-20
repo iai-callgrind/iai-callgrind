@@ -240,7 +240,7 @@ fn cachegrind_filter(bytes: &[u8], writer: &mut impl Write) {
 }
 
 pub fn get_valgrind_command() -> Command {
-    let valgrind = if let Ok(dir) = std::env::var("IAI_CALLGRIND_VALGRIND_PATH") {
+    let valgrind = if let Ok(dir) = std::env::var("GUNGRAUN_VALGRIND_PATH") {
         PathBuf::from(dir).join("valgrind")
     } else {
         // TODO: Don't use a partly hardcoded path to the valgrind binary if running the tests with

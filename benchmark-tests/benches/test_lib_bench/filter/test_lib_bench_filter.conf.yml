@@ -1,0 +1,26 @@
+groups:
+  - runs:
+      - args: ["none"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.none
+  - runs:
+      - args: ["test_lib_bench_filter::*"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.all_in_file
+  - runs:
+      - args: ["*::group_1::*"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.just_group_1
+  - runs:
+      - args: ["*::minimal_bench"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.without_id
+  - runs:
+      - args: ["*::forty_two"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.just_id

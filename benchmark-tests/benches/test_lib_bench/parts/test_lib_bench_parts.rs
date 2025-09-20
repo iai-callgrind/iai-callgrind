@@ -2,7 +2,7 @@ use std::hint::black_box;
 use std::process::{Command, ExitStatus};
 
 use benchmark_tests::{find_primes, find_primes_multi_thread_with_instrumentation};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Callgrind, EntryPoint,
     LibraryBenchmarkConfig, OutputFormat,
 };
@@ -43,9 +43,9 @@ fn bench_no_thread() -> Vec<u64> {
         .tool(Callgrind::with_args(["--dump-after=*::find_primes"]))
 )]
 fn bench_multiple_threads() -> Vec<u64> {
-    iai_callgrind::client_requests::callgrind::start_instrumentation();
+    gungraun::client_requests::callgrind::start_instrumentation();
     let result = black_box(find_primes_multi_thread_with_instrumentation(2));
-    iai_callgrind::client_requests::callgrind::stop_instrumentation();
+    gungraun::client_requests::callgrind::stop_instrumentation();
     result
 }
 

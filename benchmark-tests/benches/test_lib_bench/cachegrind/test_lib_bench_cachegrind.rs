@@ -1,7 +1,7 @@
 use std::hint::black_box;
 
 use benchmark_tests::{bubble_sort, setup_best_case_array};
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, Cachegrind, Callgrind, LibraryBenchmarkConfig,
 };
 
@@ -56,9 +56,9 @@ fn bench_default_tool(array: Vec<i32>) -> Vec<i32> {
         .tool(Cachegrind::with_args(["instr-at-start=no"]))
 )]
 fn manual_cachegrind_setup(array: Vec<i32>) -> Vec<i32> {
-    iai_callgrind::client_requests::cachegrind::start_instrumentation();
+    gungraun::client_requests::cachegrind::start_instrumentation();
     let r = black_box(bubble_sort(array));
-    iai_callgrind::client_requests::cachegrind::stop_instrumentation();
+    gungraun::client_requests::cachegrind::stop_instrumentation();
     r
 }
 

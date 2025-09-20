@@ -2,11 +2,11 @@
 
 # Multi-threaded and multi-process applications
 
-The default is to run Iai-Callgrind benchmarks with `--separate-threads=yes`,
-`--trace-children=yes` switched on. This enables Iai-Callgrind to trace threads
+The default is to run Gungraun benchmarks with `--separate-threads=yes`,
+`--trace-children=yes` switched on. This enables Gungraun to trace threads
 and subprocesses, respectively. Note that `--separate-threads=yes` is not
 strictly necessary to be able to trace threads. But, if they are separated,
-Iai-Callgrind can collect and display the metrics for each thread. Due to the
+Gungraun can collect and display the metrics for each thread. Due to the
 way `callgrind` applies [data collection options] like `--toggle-collect`,
 `--collect-atstart`, ... further configuration is needed in library benchmarks.
 
@@ -14,9 +14,9 @@ To actually see the collected metrics in the terminal output for all threads
 and/or subprocesses you can switch on `OutputFormat::show_intermediate`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: u64) -> Vec<u64> { vec![]} }
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     OutputFormat
 };
@@ -64,8 +64,8 @@ code below to show the different customization options assuming this code lives
 in a benchmark file `benches/lib_bench_threads.rs`
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{
+# extern crate gungraun;
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     OutputFormat
 };
@@ -168,7 +168,7 @@ terminal output:
 <span style="color:#555">  </span>Total read+write:                   <b>67233</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86923</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 As you can see, the counts for the threads `2` and `3` (our spawned threads) are
 all zero.
@@ -179,9 +179,9 @@ At a first glance, setting a toggle to the function in the thread seems to be
 easiest way and can be done like so:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -241,7 +241,7 @@ threads are still zero:
 <span style="color:#555">  </span>Total read+write:                   <b>67312</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>86976</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 Just to show what would happen if the compiler does not inline the `find_primes`
 method, we temporarily annotate it with `#[inline(never)]`:
@@ -290,7 +290,7 @@ Now, running the benchmark does show the desired metrics:
 <span style="color:#555">  </span>Total read+write:                 <b>6326868</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357340</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 1.19222s</code></pre>
 
 But, annotating functions with `#[inline(never)]` in production code is usually
 not an option and preventing the compiler from doing its job is not the
@@ -302,9 +302,9 @@ Another way to get the thread metrics is to set `--collect-atstart=yes` and turn
 off the `EntryPoint`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -363,7 +363,7 @@ from `27372` to `404425`):
 <span style="color:#555">  </span>Total read+write:                 <b>6853187</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>7044707</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Additionally, expect a lot of metric changes if the benchmarks itself are
 changed. However, if the metrics of the main thread are not significant compared
@@ -384,8 +384,8 @@ Using the callgrind client request, we adjust the threads in the
 
 ```rust
 # fn find_primes(_a: u64, _b: u64) -> Vec<u64> { vec![] }
-# extern crate iai_callgrind;
-use iai_callgrind::client_requests::callgrind;
+# extern crate gungraun;
+use gungraun::client_requests::callgrind;
 
 /// Return the prime numbers in the range `0..(num_threads * 10000)`
 pub fn find_primes_multi_thread(num_threads: usize) -> Vec<u64> {
@@ -449,10 +449,10 @@ threads:
 <span style="color:#555">  </span>Total read+write:                 <b>6326783</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6357217</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 Using the client request toggles is very flexible since you can put the
-`iai_callgrind::client_requests::callgrind::toggle_collect` instructions
+`gungraun::client_requests::callgrind::toggle_collect` instructions
 anywhere in the threads. In this example, we just have a single function in the
 thread, but if your threads consist of more than just a single function, you can
 easily exclude uninteresting parts from the final measurements.
@@ -461,9 +461,9 @@ If you want to prevent the code of the main thread from being measured, you can
 use the following:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn find_primes_multi_thread(_: usize) -> Vec<u64> { vec![] }}
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -522,7 +522,7 @@ Altogether, running the benchmark will show:
 <span style="color:#555">  </span>Total read+write:                 <b>6259550</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                 <b>6270422</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 ## Multi-process applications
 
@@ -568,14 +568,14 @@ the benchmark and library code to show the different options assuming this code
 is stored in a benchmark file `benches/lib_bench_subprocess.rs`
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
 use std::hint::black_box;
 use std::io;
 use std::path::PathBuf;
 use std::process::ExitStatus;
 
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     OutputFormat,
 };
@@ -647,7 +647,7 @@ output:
 <span style="color:#555">  </span>Total read+write:                    <b>6305</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>12697</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As expected, the `cat` subprocess is not measured and the metrics are zero for
 the same reasons as the initial measurement of threads.
@@ -660,7 +660,7 @@ for the `--toggle-collect` argument so the following adaption to the above
 benchmark will just work:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib {
 # use std::{io, path::Path, process::ExitStatus};
 # pub fn cat(_: &Path) -> io::Result<ExitStatus> {
@@ -671,7 +671,7 @@ benchmark will just work:
 # use std::io;
 # use std::path::PathBuf;
 # use std::process::ExitStatus;
-# use iai_callgrind::{
+# use gungraun::{
 #    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
 #    OutputFormat, Callgrind
 # };
@@ -716,7 +716,7 @@ producing the desired output
 <span style="color:#555">  </span>Total read+write:                   <b>12067</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>24207</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 ### Measuring subprocesses using client requests
 
@@ -724,10 +724,10 @@ Naturally, client requests can also be used to measure subprocesses. The
 callgrind client requests are added to the code of the `cat` binary:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 use std::fs::File;
 use std::io::{copy, stdout, BufReader, BufWriter, Write};
-use iai_callgrind::client_requests::callgrind;
+use gungraun::client_requests::callgrind;
 
 # fn main() {
 fn main() {
@@ -754,7 +754,7 @@ collected metrics. The benchmark itself is reverted to its original state
 without the toggle:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib {
 # use std::{io, path::Path, process::ExitStatus};
 # pub fn cat(_: &Path) -> io::Result<ExitStatus> {
@@ -765,7 +765,7 @@ without the toggle:
 # use std::io;
 # use std::path::PathBuf;
 # use std::process::ExitStatus;
-# use iai_callgrind::{
+# use gungraun::{
 #    library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
 #    OutputFormat,
 # };
@@ -807,7 +807,7 @@ Now, running the benchmark shows
 <span style="color:#555">  </span>Total read+write:                    <b>9857</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                   <b>20973</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 As expected, the metrics for the `cat` binary are a little bit lower since we
 skipped measuring the parsing of the command-line arguments.

@@ -3,7 +3,7 @@
 use std::hint::black_box;
 
 use benchmark_tests::print_env;
-use iai_callgrind::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
+use gungraun::{library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig};
 
 #[library_benchmark]
 #[bench::single(&["HOME"])]

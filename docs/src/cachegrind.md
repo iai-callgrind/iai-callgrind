@@ -11,18 +11,18 @@ feature
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.16.1", features = ["client_requests"] }
+gungraun = { version = "0.16.1", features = ["client_requests"] }
 ```
 
 ## The cachegrind feature
 
 There are two ways to use cachegrind instead of callgrind. The first and easy
-way is to use the `cachegrind` feature, so your `iai-callgrind` spec should
+way is to use the `cachegrind` feature, so your `gungraun` spec should
 finally look like this:
 
 ```toml
 [dev-dependencies]
-iai-callgrind = { version = "0.16.1", features = ["cachegrind"] }
+gungraun = { version = "0.16.1", features = ["cachegrind"] }
 ```
 
 The `cachegrind` feature automatically activates the `client_requests` feature,
@@ -37,10 +37,10 @@ also command-line arguments) but they have the same principle in common. For
 example in the benchmark file run a specific benchmark function with Cachegrind:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # pub mod my_lib { pub fn bubble_sort(input: Vec<i32>) -> Vec<i32> { input } }
 
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     client_requests, ValgrindTool
 };
@@ -68,10 +68,10 @@ teardown, ... For this reason we need client requests to tell `Cachegrind` when
 to start and stop the instrumentation:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # pub mod my_lib { pub fn bubble_sort(input: Vec<i32>) -> Vec<i32> { input } }
 
-use iai_callgrind::{
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     ValgrindTool, client_requests, Cachegrind
 };

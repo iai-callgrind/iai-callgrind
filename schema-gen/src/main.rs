@@ -1,10 +1,10 @@
 //! A utility binary to create the json schema for the summary.json file
 //!
-//! This binary is not considered a part of the published `iai-callgrind-runner` package and is only
-//! used during the development of `iai-callgrind`.
+//! This binary is not considered a part of the published `gungraun-runner` package and is only
+//! used during the development of `gungraun`.
 use std::fs::File;
 
-use iai_callgrind_runner::runner::summary::BenchmarkSummary;
+use gungraun_runner::runner::summary::BenchmarkSummary;
 use schemars::generate::SchemaSettings;
 
 fn main() {

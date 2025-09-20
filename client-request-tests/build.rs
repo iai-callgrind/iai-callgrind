@@ -31,9 +31,9 @@ fn main() {
     println!("cargo:rerun-if-env-changed=RUSTC");
     println!("cargo:rerun-if-env-changed=CARGO_MANIFEST_DIR");
     println!("cargo:rerun-if-env-changed=CROSS_RUNNER");
-    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_TARGET");
-    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_VALGRIND_TEMPDIR");
-    println!("cargo:rerun-if-env-changed=IAI_CALLGRIND_CROSS_VALGRIND_DESTDIR");
+    println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_TARGET");
+    println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_VALGRIND_TEMPDIR");
+    println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_VALGRIND_DESTDIR");
 
     let fixtures = PathBuf::from(
         std::env::var("CARGO_MANIFEST_DIR")
@@ -69,16 +69,16 @@ fn main() {
     }
 
     // If Ok, then we're building with cross
-    if let Ok(cross_target) = std::env::var("IAI_CALLGRIND_CROSS_TARGET") {
-        set_env_var("IAI_CALLGRIND_CROSS_TARGET", cross_target);
+    if let Ok(cross_target) = std::env::var("GUNGRAUN_CROSS_TARGET") {
+        set_env_var("GUNGRAUN_CROSS_TARGET", cross_target);
 
         let temp_dir = PathBuf::from(
-            std::env::var("IAI_CALLGRIND_CROSS_VALGRIND_TEMPDIR")
-                .expect("Environment variable 'IAI_CALLGRIND_CROSS_VALGRIND_TEMPDIR' should exist"),
+            std::env::var("GUNGRAUN_CROSS_VALGRIND_TEMPDIR")
+                .expect("Environment variable 'GUNGRAUN_CROSS_VALGRIND_TEMPDIR' should exist"),
         );
         let dest_dir = PathBuf::from(
-            std::env::var("IAI_CALLGRIND_CROSS_VALGRIND_DESTDIR")
-                .expect("Environment variable 'IAI_CALLGRIND_CROSS_VALGRIND_DESTDIR' should exist"),
+            std::env::var("GUNGRAUN_CROSS_VALGRIND_DESTDIR")
+                .expect("Environment variable 'GUNGRAUN_CROSS_VALGRIND_DESTDIR' should exist"),
         );
 
         if temp_dir.exists() {
@@ -96,7 +96,7 @@ fn main() {
         }
     } else {
         set_env_var(
-            "IAI_CALLGRIND_CROSS_TARGET",
+            "GUNGRAUN_CROSS_TARGET",
             std::env::var("TARGET").expect("Environment variable TARGET should be present"),
         );
     }

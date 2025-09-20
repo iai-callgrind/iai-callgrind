@@ -1,0 +1,26 @@
+groups:
+  - runs:
+      - args: ["--nocapture", "none"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.none
+  - runs:
+      - args: ["--nocapture", "test_bin_bench_filter::*"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.all_in_file
+  - runs:
+      - args: ["--nocapture", "*::group_1::*"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.just_group_1
+  - runs:
+      - args: ["--nocapture", "*::minimal_bench"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.without_id
+  - runs:
+      - args: ["--nocapture", "*::forty_two"]
+        expected:
+          exit_code: 0
+          stdout: expected_stdout.just_id

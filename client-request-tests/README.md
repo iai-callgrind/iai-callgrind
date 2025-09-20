@@ -1,11 +1,11 @@
 <!-- spellchecker: ignore nofile nocapture -->
 
-<h1 align="center">Iai-Callgrind</h1>
+<h1 align="center">Gungraun</h1>
 
 <div align="center">High-precision and consistent benchmarking framework/harness for Rust</div>
 
 This package is not published and exists merely for testing the client requests
-implementation of the [iai-callgrind](../iai-callgrind) package.
+implementation of the [gungraun](../gungraun) package.
 
 # For developers
 

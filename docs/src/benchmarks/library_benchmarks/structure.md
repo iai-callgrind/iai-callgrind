@@ -3,8 +3,8 @@
 We're reusing our example from the [Quickstart](./quickstart.md) section.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 fn fibonacci(n: u64) -> u64 {
@@ -56,7 +56,7 @@ function wrapped in a `black_box`. See the docs of
 for more information about its usage. Simply put, _all_ values and variables in
 the benchmarking function (but not in your library function) need to be wrapped
 in a `black_box` except for the input parameters (here `value`) because
-Iai-Callgrind already does that. But, it is no error to `black_box` the `value`
+Gungraun already does that. But, it is no error to `black_box` the `value`
 again.
 
 The `bench` attribute takes any expression which includes function calls. The
@@ -64,8 +64,8 @@ following would have worked too and is one way to avoid the costs of the setup
 code being attributed to the benchmarked function.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 fn some_setup_func(value: u64) -> u64 {

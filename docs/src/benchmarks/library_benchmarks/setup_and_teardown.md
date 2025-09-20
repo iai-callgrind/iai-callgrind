@@ -13,7 +13,7 @@ In an ideal world you don't need any setup code, and you can pass arguments to
 the function as they are.
 
 But, for example if a function expects a `File` and not a `&str` with the path
-to the file you need `setup` code. Iai-Callgrind has an easy-to-use system in
+to the file you need `setup` code. Gungraun has an easy-to-use system in
 place to allow you to run any setup code before the function is executed and
 this `setup` code is not attributed to the metrics of the benchmark.
 
@@ -23,9 +23,9 @@ receives the return value of the `setup` function as parameter. This is a small
 indirection with great effect. The effect is best shown with an example:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -52,7 +52,7 @@ benchmark. Let's assume the above benchmark is in a file
 `benches/my_benchmark.rs`, then running
 
 ```shell
-IAI_CALLGRIND_NOCAPTURE=true cargo bench
+GUNGRAUN_NOCAPTURE=true cargo bench
 ```
 
 result in the benchmark output like below.
@@ -65,7 +65,7 @@ result in the benchmark output like below.
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508328</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The description in the headline contains `open_file("path/to/file")`, your setup
 function `open_file` with the value of the parameter it is called with.
@@ -75,9 +75,9 @@ If you need to specify the same `setup` function for all (or almost all)
 parameter of the `#[library_benchmark]`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -121,9 +121,9 @@ The `teardown` function takes the return value of the benchmark function as its
 argument:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_bytes_fast(_file: std::fs::File) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -153,14 +153,14 @@ main!(library_benchmark_groups = my_group);
 # }
 ```
 
-Note Iai-Callgrind captures all output per default. In order to actually see the
+Note Gungraun captures all output per default. In order to actually see the
 output of the benchmark, `setup` and `teardown` functions, it is required to run
 the benchmarks with the flag `--nocapture` or set the environment variable
-`IAI_CALLGRIND_NOCAPTURE=true`. Let's assume the above benchmark is in a file
+`GUNGRAUN_NOCAPTURE=true`. Let's assume the above benchmark is in a file
 `benches/my_benchmark.rs`, then running
 
 ```shell
-IAI_CALLGRIND_NOCAPTURE=true cargo bench
+GUNGRAUN_NOCAPTURE=true cargo bench
 ```
 
 results in output like the below
@@ -175,7 +175,7 @@ bytes read: 25078
   Total read+write: <b>        2507946</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>        2508396</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.49333s</code></pre>
 
 The output of the `teardown` function is now visible in the benchmark output
 above the `- end of stdout/stderr` line.

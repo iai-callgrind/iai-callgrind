@@ -3,9 +3,7 @@ mod my_lib {
 }
 use std::hint::black_box;
 
-use iai_callgrind::{
-    library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig,
-};
+use gungraun::{library_benchmark, library_benchmark_group, main, Dhat, LibraryBenchmarkConfig};
 
 #[library_benchmark]
 #[bench::worst_case_3(vec![3, 2, 1])]

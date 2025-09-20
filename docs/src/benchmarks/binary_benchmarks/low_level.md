@@ -9,9 +9,9 @@ Documentation](https://docs.rs/iai-callgrind/0.16.1/iai_callgrind/index.html).
 The entry point of the low-level api is the `binary_benchmark_group`
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
      binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main,
      BinaryBenchmark, Bench
 };
@@ -21,7 +21,7 @@ binary_benchmark_group!(
     benchmarks = |group: &mut BinaryBenchmarkGroup| {
         group.binary_benchmark(BinaryBenchmark::new("bench_binary")
             .bench(Bench::new("some_id")
-                .command(iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+                .command(gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
                     .arg("foo.txt")
                     .build()
                 )
@@ -47,15 +47,15 @@ There's the shorter `benchmarks = |group| /* ... */` instead of `benchmarks =
 in the examples because it is more informative for benchmarking starters.
 
 Furthermore, the `#[library_benchmark]` macro correlates with
-`iai_callgrind::LibraryBenchmark` and `#[bench]` with `iai_callgrind::Bench`.
+`gungraun::LibraryBenchmark` and `#[bench]` with `gungraun::Bench`.
 The parameters of the macros are now functions in the respective structs. The
-return value of the benchmark function, the `iai-callgrind::Command`, is now
-also a function `iai-callgrind::Bench::command`.
+return value of the benchmark function, the `gungraun::Command`, is now
+also a function `gungraun::Bench::command`.
 
-Note there is no `iai-callgrind::Benches` struct since specifying multiple
-commands with `iai_callgrind::Bench::command` behaves exactly the same way as
+Note there is no `gungraun::Benches` struct since specifying multiple
+commands with `gungraun::Bench::command` behaves exactly the same way as
 the `#[benches]` attribute. So, the `file` parameter of `#[benches]` is a part
-of `iai-callgrind::Bench` and can be used with the `iai-callgrind::Bench::file`
+of `gungraun::Bench` and can be used with the `gungraun::Bench::file`
 function.
 
 ## Intermixing high-level and low-level api
@@ -66,17 +66,17 @@ a few steps with the `binary_benchmark_attribute!` macro as shown below. The
 other way around is much more involved.
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
      binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main,
      BinaryBenchmark, Bench
 };
 
 #[binary_benchmark]
 #[bench::some_id("foo")]
-fn attribute_benchmark(arg: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
+fn attribute_benchmark(arg: &str) -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-binary"))
         .arg(arg)
         .build()
 }
@@ -90,7 +90,7 @@ binary_benchmark_group!(
                 BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("some_id").command(
-                            iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-binary"))
+                            gungraun::Command::new(env!("CARGO_BIN_EXE_my-binary"))
                                 .arg("bar")
                                 .build()
                         )

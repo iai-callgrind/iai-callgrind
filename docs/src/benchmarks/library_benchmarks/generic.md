@@ -10,9 +10,9 @@ However, there is a common pitfall. If you have a function
 it is convenient especially when you have to specify many paths, don't do this:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_lines_in_file_fast(_path: std::path::PathBuf) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;
@@ -35,9 +35,9 @@ almost never what you intended. You should instead convert the argument to a
 `PathBuf` in a generic `setup` function like that:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn count_lines_in_file_fast(_path: std::path::PathBuf) -> u64 { 1 } }
-use iai_callgrind::{library_benchmark, library_benchmark_group, main};
+use gungraun::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 use std::path::PathBuf;

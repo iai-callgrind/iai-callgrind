@@ -11,14 +11,14 @@ harness = false
 ```
 
 to your `Cargo.toml`. `harness = false`, tells `cargo` to not use the default
-rust benchmarking harness which is important because Iai-Callgrind has an own
+rust benchmarking harness which is important because Gungraun has an own
 benchmarking harness.
 
 Then copy the following content into this file:
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+# extern crate gungraun;
+use gungraun::{main, library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 fn fibonacci(n: u64) -> u64 {
@@ -69,10 +69,10 @@ and should see something like the below
   Total read+write: <b>       35638622</b>|N/A             (<span style="color:#555">*********</span>)
   Estimated Cycles: <b>       35638766</b>|N/A             (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>
 
 In addition, you'll find the callgrind output and the output of other valgrind
-tools in `target/iai`, if you want to investigate further with a tool like
+tools in `target/gungraun`, if you want to investigate further with a tool like
 `callgrind_annotate` etc.
 
 When running the same benchmark again, the output will report the differences
@@ -94,4 +94,4 @@ between the current and the previous run. Say you've made change to the
   Total read+write: <b>       22025882</b>|35638622        (<b><span style="color:#42c142">-38.1966%</span></b>) [<b><span style="color:#42c142">-1.61803x</span></b>]
   Estimated Cycles: <b>       22026026</b>|35638766        (<b><span style="color:#42c142">-38.1964%</span></b>) [<b><span style="color:#42c142">-1.61803x</span></b>]
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 2 without regressions; 0 regressed; 2 benchmarks finished in 0.49333s</code></pre>

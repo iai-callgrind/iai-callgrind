@@ -99,6 +99,7 @@ docsrs
 doctest
 doesnotexist
 dotgraphs
+dowild
 dpkg
 dtolnay
 elems
@@ -237,6 +238,7 @@ serr
 setarch
 shlex
 simd
+simplematch
 soft_limit
 splitn
 sploss1

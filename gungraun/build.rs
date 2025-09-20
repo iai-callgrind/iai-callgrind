@@ -1,0 +1,261 @@
+//! The build script
+
+// spell-checker: ignore rustified iquote iquotevalgrind
+
+#[cfg(feature = "client_requests_defs")]
+mod imp {
+    use std::borrow::Cow;
+    use std::fmt::Display;
+    use std::io::{BufRead, BufReader, Cursor};
+    use std::path::PathBuf;
+
+    use bindgen::{builder, Bindings};
+    use rustc_version::{version, Version};
+    use strum::{EnumIter, IntoEnumIterator};
+
+    #[derive(Debug)]
+    struct Target {
+        arch: String,
+        env: String,
+        os: String,
+        triple: String,
+        vendor: String,
+    }
+
+    #[derive(EnumIter, Debug, PartialEq, Eq)]
+    enum Support {
+        Arm,
+        Aarch64,
+        X86,
+        X86_64,
+        Riscv64,
+        Native,
+        No,
+    }
+
+    impl Display for Support {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            let support = format!("{self:?}").to_lowercase();
+            f.write_str(&support)
+        }
+    }
+
+    impl Target {
+        fn from_env() -> Self {
+            Self {
+                arch: std::env::var("CARGO_CFG_TARGET_ARCH").unwrap(),
+                env: std::env::var("CARGO_CFG_TARGET_ENV").unwrap(),
+                os: std::env::var("CARGO_CFG_TARGET_OS").unwrap(),
+                vendor: std::env::var("CARGO_CFG_TARGET_VENDOR").unwrap(),
+                triple: std::env::var("TARGET").unwrap(),
+            }
+        }
+    }
+
+    pub fn print_migration_warnings() {
+        for (old, new) in std::env::vars()
+            .filter_map(|(key, _)| {
+                (key.starts_with("IAI_CALLGRIND_") && key.ends_with("VALGRIND_INCLUDE"))
+                    .then(|| (key.clone(), key.replace("IAI_CALLGRIND_", "GUNGRAUN_")))
+            })
+            .chain([(
+                "IAI_CALLGRIND_VALGRIND_PATH".to_owned(),
+                "GUNGRAUN_VALGRIND_PATH".to_owned(),
+            )])
+        {
+            if std::env::var(&old).is_ok() && std::env::var(&new).is_err() {
+                eprintln!(
+                    "gungraun: WARNING: With version 0.17.0, the name of the environment variable \
+                     `{old}` has changed to `{new}`."
+                );
+            }
+        }
+    }
+
+    fn print_client_requests_support(value: &Support) {
+        println!("cargo:rustc-cfg=client_requests_support=\"{value}\"");
+    }
+
+    fn include_dirs(target: &Target) -> impl Iterator<Item = String> {
+        [
+            Cow::Owned(format!(
+                "GUNGRAUN_{}_VALGRIND_INCLUDE",
+                target.triple.replace('-', "_").to_ascii_uppercase()
+            )),
+            Cow::Borrowed("GUNGRAUN_VALGRIND_INCLUDE"),
+        ]
+        .into_iter()
+        .filter_map(|env| std::env::var(env.as_ref()).ok())
+    }
+
+    fn build_native(target: &Target) {
+        let mut builder = cc::Build::new();
+
+        for env in include_dirs(target) {
+            builder.include(env);
+        }
+
+        if target.os == "freebsd" {
+            builder.include("/usr/local/include");
+        }
+
+        if let Ok(env) = std::env::var("GUNGRAUN_CROSS_TARGET") {
+            let path = PathBuf::from("/valgrind/target/valgrind")
+                .join(env)
+                .join("include");
+            builder.include(path);
+        }
+
+        builder.include("valgrind/include");
+
+        builder
+            .debug(true)
+            .file("valgrind/native.c")
+            .compile("native");
+    }
+
+    fn build_bindings(target: &Target) -> Bindings {
+        let mut builder = builder();
+
+        for env in include_dirs(target) {
+            builder = builder.clang_arg(format!("-iquote{env}"));
+        }
+
+        if let Ok(env) = std::env::var("GUNGRAUN_CROSS_TARGET") {
+            let path = PathBuf::from("/valgrind/target/valgrind")
+                .join(env)
+                .join("include");
+            builder = builder.clang_arg(format!("-iquote{}", path.display()));
+        }
+
+        if target.os == "freebsd" {
+            builder = builder.clang_arg("-iquote/usr/local/include");
+        }
+
+        let bindings = builder
+            .clang_arg("-iquote/usr/include")
+            .clang_arg("-iquotevalgrind/include")
+            .header("valgrind/wrapper.h")
+            .allowlist_var("GR_IS_PLATFORM_SUPPORTED_BY_VALGRIND")
+            .allowlist_var("GR_VALGRIND_MAJOR")
+            .allowlist_var("GR_VALGRIND_MINOR")
+            .allowlist_type("GR_.*ClientRequest")
+            .rustified_enum("GR_.*ClientRequest")
+            .layout_tests(false)
+            .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
+            .generate()
+            .expect("Generating binding should succeed");
+
+        let out_dir = std::env::var("OUT_DIR").map(PathBuf::from).unwrap();
+        let path = out_dir.join("bindings.rs");
+        bindings.write_to_file(path).unwrap();
+        bindings
+    }
+
+    // Return the rust version if running rustc was successful
+    fn get_rust_version() -> Option<Version> {
+        version().ok()
+    }
+
+    pub fn main() {
+        print_migration_warnings();
+
+        println!("cargo:rerun-if-changed=valgrind/wrapper.h");
+        println!("cargo:rerun-if-changed=valgrind/native.c");
+        println!("cargo:rerun-if-env-changed=GUNGRAUN_VALGRIND_INCLUDE");
+        println!("cargo:rerun-if-env-changed=GUNGRAUN_CROSS_TARGET");
+        println!("cargo:rerun-if-env-changed=TARGET");
+
+        // rustc-check-cfg is introduced in rust with version 1.80 and avoids the compiler warnings
+        // in version >= 1.80.0. Printing it when compiling with versions < 1.80 triggers a warning,
+        // too. To get the best of both worlds we check against the currently active rust version.
+        if let Some(rust_version) = get_rust_version() {
+            if rust_version.major >= 1 && rust_version.minor >= 80 {
+                let values = Support::iter()
+                    .map(|s| format!("\"{s}\""))
+                    .collect::<Vec<String>>()
+                    .join(",");
+                println!("cargo:rustc-check-cfg=cfg(client_requests_support,values({values}))");
+            }
+        }
+
+        let target = Target::from_env();
+
+        // When building the docs on docs.rs we can take a shortcut
+        if std::env::var("DOCS_RS").is_ok() {
+            print_client_requests_support(&Support::X86_64);
+            build_bindings(&target);
+            build_native(&target);
+            return;
+        }
+
+        let bindings = build_bindings(&target);
+
+        // These guards mirror the checks in the `valgrind.h` header file
+        let support = if target.arch == "x86_64"
+            && (target.os == "linux"
+                || target.os == "freebsd"
+                || (target.vendor == "apple" && target.os == "darwin")
+                || (target.os == "windows" && target.env == "gnu")
+                || ((target.vendor == "sun") || target.vendor == "pc") && target.os == "solaris")
+        {
+            Some(Support::X86_64)
+        } else if target.arch == "x86"
+            && (target.os == "linux"
+                || target.os == "freebsd"
+                || (target.vendor == "apple" && target.os == "darwin")
+                || (target.os == "windows" && target.env == "gnu")
+                || ((target.vendor == "sun") || target.vendor == "pc") && target.os == "solaris")
+        {
+            Some(Support::X86)
+        } else if target.arch == "arm" && target.os == "linux" && target.env == "gnu" {
+            Some(Support::Arm)
+        } else if target.arch == "aarch64"
+            && (target.os == "freebsd" || (target.os == "linux" && target.env == "gnu"))
+        {
+            Some(Support::Aarch64)
+        } else if target.arch == "riscv64gc" && target.os == "linux" {
+            Some(Support::Riscv64)
+        } else {
+            let re = regex::Regex::new(
+                r"GR_IS_PLATFORM_SUPPORTED_BY_VALGRIND.*?=\s*(?<value>true|false)",
+            )
+            .expect("Regex should compile");
+            let reader = BufReader::new(Cursor::new(bindings.to_string()));
+            let mut support = None;
+            for line in reader.lines().map(Result::unwrap) {
+                if let Some(caps) = re.captures(&line) {
+                    let value = caps.name("value").unwrap().as_str();
+                    if value == "false" {
+                        support = Some(Support::No);
+                    } else if value == "true" {
+                        support = Some(Support::Native);
+                    } else {
+                        // do nothing
+                    }
+                    break;
+                }
+            }
+            support
+        };
+
+        if let Some(support) = support {
+            print_client_requests_support(&support);
+            if support != Support::No {
+                build_native(&target);
+            }
+        } else {
+            eprintln!("{bindings}");
+            panic!("Unable to set cfg value for client_requests_support");
+        }
+    }
+}
+
+#[cfg(not(feature = "client_requests_defs"))]
+mod imp {
+    pub fn main() {}
+}
+
+fn main() {
+    imp::main();
+}

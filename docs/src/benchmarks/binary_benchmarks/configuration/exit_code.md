@@ -6,9 +6,9 @@ different from `0`, the expected exit code can be set in
 `BinaryBenchmarkConfig::exit_with` or `Command::exit_with`:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # macro_rules! env { ($m:tt) => {{ "/some/path" }} }
-use iai_callgrind::{
+use gungraun::{
      binary_benchmark, binary_benchmark_group, main, BinaryBenchmarkConfig, ExitWith
 };
 
@@ -21,8 +21,8 @@ use iai_callgrind::{
 #[bench::exit_with_failure(
     config = BinaryBenchmarkConfig::default().exit_with(ExitWith::Failure)
 )]
-fn bench_binary() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_my-foo"))
+fn bench_binary() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_my-foo"))
 }
 
 binary_benchmark_group!(name = my_group; benchmarks = bench_binary);

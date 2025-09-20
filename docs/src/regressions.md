@@ -2,9 +2,9 @@
 
 # Detecting Performance Regressions
 
-With Iai-Callgrind you can define limits for each callgrind/cachegrind event
+With Gungraun you can define limits for each callgrind/cachegrind event
 kind or dhat metric over which a performance regression can be assumed. Per
-default, Iai-Callgrind does not perform regression checks, and you have to
+default, Gungraun does not perform regression checks, and you have to
 opt-in with `Callgrind::soft_limits`, `Callgrind::hard_limits`,
 `Cachegrind::soft_limits`, ... at benchmark level in
 `LibraryBenchmarkConfig::tool` or `BinaryBenchmarkConfig::tool` or at a more
@@ -19,18 +19,18 @@ restrict the `EventKind`, ... by an absolute number.
 
 Note that [comparing baselines](./cli_and_env/baselines.md) also detects
 performance regressions. This can be useful, for example, when setting up
-Iai-Callgrind in the [CI](./installation/iai_callgrind.md#in-the-github-ci) to
+Gungraun in the [CI](./installation/gungraun.md#in-the-github-ci) to
 cause a PR to fail when comparing to the main branch.
 
 Regressions are considered errors and will cause the benchmark to fail if they
-occur, and Iai-Callgrind will exit with error code `3`.
+occur, and Gungraun will exit with error code `3`.
 
 ## Defining limits on the command-line
 
 Limits can be defined on the command-line for the following tools with
-`--callgrind-limits` (`IAI_CALLGRIND_CALLGRIND_LIMITS`), `--cachegrind-limits`
-(`IAI_CALLGRIND_CACHEGRIND_LIMITS`)  and `--dhat-limits`
-(`IAI_CALLGRIND_DHAT_LIMITS`). Command-line limits overwrite the limits
+`--callgrind-limits` (`GUNGRAUN_CALLGRIND_LIMITS`), `--cachegrind-limits`
+(`GUNGRAUN_CACHEGRIND_LIMITS`)  and `--dhat-limits`
+(`GUNGRAUN_DHAT_LIMITS`). Command-line limits overwrite the limits
 specified in the benchmark file (see below).
 
 In order to disambiguate between soft and hard limits, soft limits have to be
@@ -39,7 +39,7 @@ total instructions executed `ir` (printed as `Instructions` in the callgrind
 terminal output) to `5%`:
 
 ```shell
-cargo bench --bench iai_callgrind_benchmark -- --callgrind-limits='ir=5%'
+cargo bench --bench gungraun_benchmark -- --callgrind-limits='ir=5%'
 ```
 
 These command-line arguments and environment variables can be used to define
@@ -136,9 +136,9 @@ Benchmark](./benchmarks/library_benchmarks/configuration.md), define a soft
 limit of `+5%` for the `Ir` event kind for all benchmarks of this file:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     Callgrind, EventKind
 };
@@ -176,7 +176,7 @@ following output:
 <span style="color:#555">  </span>Total read+write:                     <b>206</b>|N/A                  (<span style="color:#555">*********</span>)
 <span style="color:#555">  </span>Estimated Cycles:                     <b>376</b>|N/A                  (<span style="color:#555">*********</span>)
 
-Iai-Callgrind result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.14477s</code></pre>
+Gungraun result: <b><span style="color:#0A0">Ok</span></b>. 1 without regressions; 0 regressed; 1 benchmarks finished in 0.14477s</code></pre>
 
 Let's assume there's a change in `my_lib::bubble_sort` with a negative impact on
 the performance, then running the benchmark again results in an output something
@@ -196,11 +196,11 @@ Regressions:
   <span style="color:#0A0">lib_bench_regression::my_group::bench_library</span>:
     <b>Instructions</b> (152 -> <b>264</b>): <b><span style="color:#F55">+73.6842</span></b><b><span style="color:#F55">%</span></b> exceeds limit of <span style="color:#555">+5.00000</span><span style="color:#555">%</span>
 
-Iai-Callgrind result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 1 benchmarks finished in 0.14849s
+Gungraun result: <b><span style="color:#F55">Regressed</span></b>. 0 without regressions; 1 regressed; 1 benchmarks finished in 0.14849s
 error: bench failed, to rerun pass `-p benchmark-tests --bench lib_bench_regression`
 
 Caused by:
-  process didn't exit successfully: `/home/lenny/workspace/programming/iai-callgrind/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>
+  process didn't exit successfully: `/home/lenny/workspace/programming/gungraun/target/release/deps/lib_bench_regression-98382b533bca8f56 --bench` (exit status: 3)</code></pre>
 
 ## Which event to choose to measure performance regressions?
 
@@ -228,7 +228,7 @@ The ones known to the author of this humble guide are
 * [SpacetimeDB](https://github.com/clockworklabs/SpacetimeDB)
 
 If you know of others, please feel free to
-[add](https://github.com/iai-callgrind/iai-callgrind/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
+[add](https://github.com/gungraun/gungraun/blob/5bec95ee37330954916ea29e7a7dc40ca62bc454/docs/src/regressions.md)
 them to this list.
 
 [`EventKind`]: https://docs.rs/iai-callgrind/0.16.1/iai_callgrind/enum.EventKind.html

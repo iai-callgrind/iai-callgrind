@@ -1,13 +1,13 @@
-use iai_callgrind::{binary_benchmark, binary_benchmark_group, main};
+use gungraun::{binary_benchmark, binary_benchmark_group, main};
 
 #[binary_benchmark]
-fn echo_bench() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_echo"))
+fn echo_bench() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_echo"))
 }
 
 #[binary_benchmark]
-fn read_file_bench() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(env!("CARGO_BIN_EXE_read-file"))
+fn read_file_bench() -> gungraun::Command {
+    gungraun::Command::new(env!("CARGO_BIN_EXE_read-file"))
 }
 
 binary_benchmark_group!(name = group_1; benchmarks = echo_bench);

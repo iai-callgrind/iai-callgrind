@@ -3,8 +3,8 @@ use std::path::Path;
 
 use anyhow::{anyhow, Result};
 use either_or_both::EitherOrBoth;
-use iai_callgrind_runner::runner::metrics::Metric;
-use iai_callgrind_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
+use gungraun_runner::runner::metrics::Metric;
+use gungraun_runner::runner::summary::{BenchmarkSummary, ToolMetricSummary};
 
 #[derive(Debug)]
 pub struct Summary(pub BenchmarkSummary);

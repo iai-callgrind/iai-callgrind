@@ -1,8 +1,8 @@
 # Prerequisites
 
-In order to use Iai-Callgrind, you must have
+In order to use Gungraun, you must have
 [Valgrind](https://www.valgrind.org) installed. This means that
-Iai-Callgrind cannot be used on platforms that are not supported by Valgrind.
+Gungraun cannot be used on platforms that are not supported by Valgrind.
 
 The default benchmarking tool is `Callgrind` and is in most cases perfectly
 suited to do the job but if you want or need to use
@@ -11,7 +11,7 @@ version `>= 3.22` and client requests (see below).
 
 ## Debug Symbols
 
-It's required to run the Iai-Callgrind benchmarks with debugging symbols
+It's required to run the Gungraun benchmarks with debugging symbols
 switched on. For example in your `~/.cargo/config` or your project's
 `Cargo.toml`:
 
@@ -42,7 +42,7 @@ strip = false
 
 If you want to make use of the mighty [Valgrind Client Request
 Mechanism](https://valgrind.org/docs/manual/manual-core-adv.html#manual-core-adv.clientreq)
-shipped with Iai-Callgrind, you also need `libclang` (clang >= 5.0) installed.
+shipped with Gungraun, you also need `libclang` (clang >= 5.0) installed.
 See also the requirements of
 [bindgen](https://rust-lang.github.io/rust-bindgen/requirements.html) and of
 [cc](https://github.com/rust-lang/cc-rs).
@@ -52,13 +52,13 @@ More details on the usage and requirements of Valgrind Client Requests in
 
 ## Installation of Valgrind
 
-Iai-Callgrind is intentionally independent of a specific version of valgrind.
-However, Iai-Callgrind was only tested with versions of valgrind >= `3.20.0`. It
+Gungraun is intentionally independent of a specific version of valgrind.
+However, Gungraun was only tested with versions of valgrind >= `3.20.0`. It
 is therefore highly recommended to use a recent version of valgrind. Also, if
 you want or need to, [building valgrind from
 source](https://sourceware.org/git/?p=valgrind.git;a=blob;f=README;h=eabcc6ad88c8cab6dfe73cfaaaf5543023c2e941;hb=HEAD)
 is usually a straight-forward process. Just make sure the `valgrind` binary is
-in your `$PATH` so that Iai-Callgrind can find it.
+in your `$PATH` so that Gungraun can find it.
 
 ### Installation of valgrind with your package manager
 

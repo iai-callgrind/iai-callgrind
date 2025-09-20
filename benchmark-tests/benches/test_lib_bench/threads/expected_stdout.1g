@@ -614,4 +614,4 @@ thread in thread: Number of primes found in the range 0 to 10000: 1229
   ## pid: <__PID__> ppid: <__PID__>        |pid: <__PID__> ppid: <__PID__>
   Command:             target/release/thread --thread-in-thread
   Details: <__DETAILS__>
-Iai-Callgrind result: Ok. 6 without regressions; 0 regressed; 6 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 6 without regressions; 0 regressed; 0 filtered; 6 benchmarks finished in <__SECONDS__>s

@@ -3,8 +3,8 @@ authors = ["gamma0987"]
 language = "en"
 multilingual = false
 src = "src"
-title = "Iai-Callgrind Guide"
-description = "Iai-Callgrind, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
+title = "Gungraun Guide"
+description = "Gungraun, a high-precision and consistent one-shot benchmarking framework/harness for Rust"
 
 [rust]
 edition = "2021"
@@ -13,11 +13,11 @@ edition = "2021"
 build-dir = "book/0.16.1"
 
 [output.html]
-git-repository-url = "https://github.com/iai-callgrind/iai-callgrind"
-edit-url-template = "https://github.com/iai-callgrind/iai-callgrind/master/docs/{path}"
+git-repository-url = "https://github.com/gungraun/gungraun"
+edit-url-template = "https://github.com/gungraun/gungraun/master/docs/{path}"
 additional-css = ["css/my.css", "css/dropdown.css"]
 additional-js = ["js/dropdown.js"]
-site-url = "/iai-callgrind/"
+site-url = "/gungraun/"
 
 # https://github.com/Michael-F-Bryan/mdbook-linkcheck
 [output.linkcheck]

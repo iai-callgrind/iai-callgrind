@@ -1,4 +1,4 @@
-home_dir: target/iai/x86_64-unknown-linux-gnu
+home_dir: target/gungraun/x86_64-unknown-linux-gnu
 data:
   - group: bench_fibonacci_group
     function: bench_fibonacci

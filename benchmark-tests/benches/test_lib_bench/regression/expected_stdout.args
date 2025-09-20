@@ -80,4 +80,4 @@ Regressions:
     DHAT: Reads bytes (<__NUM__> -> <__NUM__>): +<__PERCENT__>% exceeds limit of +<__PERCENT__>%
     DHAT: Total bytes (<__NUM__>): <__NUM__> exceeds limit of <__LIMIT__> by <__DIFF__>
 
-Iai-Callgrind result: Regressed. 2 without regressions; 6 regressed; 8 benchmarks finished in <__SECONDS__>s
+Gungraun result: Regressed. 2 without regressions; 6 regressed; 0 filtered; 8 benchmarks finished in <__SECONDS__>s

@@ -4,7 +4,7 @@
 authors = ["Joining7943 <joining@posteo.de>"]
 autobenches = false
 categories.workspace = true
-description = "Tests for iai-callgrind"
+description = "Tests for gungraun"
 edition.workspace = true
 homepage.workspace = true
 keywords.workspace = true
@@ -17,7 +17,7 @@ rust-version.workspace = true
 version = "0.1.0"
 
 [features]
-cachegrind = ["iai-callgrind/cachegrind"]
+cachegrind = ["gungraun/cachegrind"]
 
 [dependencies]
 anyhow = { workspace = true }
@@ -26,8 +26,8 @@ colored = { workspace = true }
 either-or-both = { workspace = true }
 fs_extra = { workspace = true }
 glob = { workspace = true }
-iai-callgrind = { path = "../iai-callgrind", features = ["client_requests"] }
-iai-callgrind-runner = { path = "../iai-callgrind-runner" }
+gungraun = { path = "../gungraun", features = ["client_requests"] }
+gungraun-runner = { path = "../gungraun-runner" }
 lazy_static = { workspace = true }
 minijinja = { workspace = true }
 once_cell = { workspace = true }
@@ -186,6 +186,11 @@ path = "benches/test_bin_bench/iter/test_bin_bench_iter.rs"
 
 [[bench]]
 harness = false
+name = "test_bin_bench_filter"
+path = "benches/test_bin_bench/filter/test_bin_bench_filter.rs"
+
+[[bench]]
+harness = false
 name = "test_lib_bench_flamegraph"
 path = "benches/test_lib_bench/flamegraph/test_lib_bench_flamegraph.rs"
 
@@ -303,6 +308,11 @@ path = "benches/test_lib_bench/xtree/test_lib_bench_xtree.rs"
 harness = false
 name = "test_lib_bench_iter"
 path = "benches/test_lib_bench/iter/test_lib_bench_iter.rs"
+
+[[bench]]
+harness = false
+name = "test_lib_bench_filter"
+path = "benches/test_lib_bench/filter/test_lib_bench_filter.rs"
 
 [[bench]]
 harness = false

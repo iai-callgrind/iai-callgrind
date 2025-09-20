@@ -104,7 +104,7 @@ jobs:
           target: ${{ matrix.target }}
       - name: Prepare
         run: |
-          archive_dir="iai-callgrind-runner-${{ needs.release.outputs.version }}-${{ matrix.target }}"
+          archive_dir="gungraun-runner-${{ needs.release.outputs.version }}-${{ matrix.target }}"
           archive_name="${archive_dir}.tar.gz"
           archive_sum="${archive_name}.sha256"
 
@@ -151,9 +151,9 @@ jobs:
       - name: Update dependencies
         if: env.CHECK == 'success'
         run: cargo update
-      - name: Build iai-callgrind-runner
+      - name: Build gungraun-runner
         if: env.CHECK == 'success'
-        run: ${{ matrix.cargo }} build -p iai-callgrind-runner --release --target ${{ matrix.target }}
+        run: ${{ matrix.cargo }} build -p gungraun-runner --release --target ${{ matrix.target }}
       - name: Create archive
         if: env.CHECK == 'success'
         run: |
@@ -162,7 +162,7 @@ jobs:
           archive_sum="${{ env.ARCHIVE_SUM }}"
 
           mkdir -p "${archive_dir}/doc"
-          cp -v target/${{ matrix.target }}/release/iai-callgrind-runner "$archive_dir"
+          cp -v target/${{ matrix.target }}/release/gungraun-runner "$archive_dir"
           cp -v README.md LICENSE-MIT LICENSE-APACHE "$archive_dir"
           cp -v CHANGELOG.md "$archive_dir/doc"
           ls -laR "$archive_dir"

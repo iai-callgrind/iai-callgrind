@@ -1,4 +1,4 @@
-use iai_callgrind::{
+use gungraun::{
     binary_benchmark, binary_benchmark_attribute, binary_benchmark_group, main, Bench,
     BinaryBenchmark,
 };
@@ -6,8 +6,8 @@ use iai_callgrind::{
 const ECHO: &str = env!("CARGO_BIN_EXE_echo");
 
 #[binary_benchmark]
-fn benchmark_without_id() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
+fn benchmark_without_id() -> gungraun::Command {
+    gungraun::Command::new(ECHO)
 }
 
 // The comparison should not happen since there is no id
@@ -19,8 +19,8 @@ binary_benchmark_group!(
 
 #[binary_benchmark]
 #[bench::foo()]
-fn benchmark_with_id() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
+fn benchmark_with_id() -> gungraun::Command {
+    gungraun::Command::new(ECHO)
 }
 
 // Compare with the same binary benchmark
@@ -32,8 +32,8 @@ binary_benchmark_group!(
 
 #[binary_benchmark]
 #[bench::foo()]
-fn benchmark_with_id_other() -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO)
+fn benchmark_with_id_other() -> gungraun::Command {
+    gungraun::Command::new(ECHO)
 }
 
 binary_benchmark_group!(
@@ -45,8 +45,8 @@ binary_benchmark_group!(
 #[binary_benchmark]
 #[bench::foo("foo")]
 #[bench::bar("bar")]
-fn benchmark_two_benches(arg: &str) -> iai_callgrind::Command {
-    iai_callgrind::Command::new(ECHO).arg(arg).build()
+fn benchmark_two_benches(arg: &str) -> gungraun::Command {
+    gungraun::Command::new(ECHO).arg(arg).build()
 }
 
 binary_benchmark_group!(
@@ -76,14 +76,14 @@ binary_benchmark_group!(
                 BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO))
+                            .command(gungraun::Command::new(ECHO))
                     )
             )
             .binary_benchmark(
                 BinaryBenchmark::new("low_level_other")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO).arg("foo"))
+                            .command(gungraun::Command::new(ECHO).arg("foo"))
                     )
                 )
     }
@@ -98,22 +98,22 @@ binary_benchmark_group!(
                 BinaryBenchmark::new("low_level_benchmark")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO).arg("foo"))
+                            .command(gungraun::Command::new(ECHO).arg("foo"))
                     )
                     .bench(
                         Bench::new("bar")
-                            .command(iai_callgrind::Command::new(ECHO).arg("bar"))
+                            .command(gungraun::Command::new(ECHO).arg("bar"))
                     )
             )
             .binary_benchmark(
                 BinaryBenchmark::new("low_level_other")
                     .bench(
                         Bench::new("foo")
-                            .command(iai_callgrind::Command::new(ECHO))
+                            .command(gungraun::Command::new(ECHO))
                     )
                     .bench(
                         Bench::new("bar")
-                            .command(iai_callgrind::Command::new(ECHO))
+                            .command(gungraun::Command::new(ECHO))
                     )
                 )
     }
@@ -127,7 +127,7 @@ binary_benchmark_group!(
             BinaryBenchmark::new("low_level_benchmark")
                 .bench(
                     Bench::new("foo")
-                        .command(iai_callgrind::Command::new(ECHO)
+                        .command(gungraun::Command::new(ECHO)
                     )
                 )
             )

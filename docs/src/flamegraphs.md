@@ -9,9 +9,9 @@ For example create all kind of flamegraphs for all benchmarks in a library
 benchmark:
 
 ```rust
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{
+use gungraun::{
     library_benchmark, library_benchmark_group, main, LibraryBenchmarkConfig,
     FlamegraphConfig, Callgrind
 };
@@ -36,7 +36,7 @@ main!(
 ```
 
 The produced flamegraph `*.svg` files are located next to the respective
-callgrind output file in the `target/iai`
+callgrind output file in the `target/gungraun`
 [directory](./cli_and_env/output/out_directory.md).
 
 ## Regular Flamegraphs
@@ -44,7 +44,7 @@ callgrind output file in the `target/iai`
 Regular callgrind flamegraphs show the inclusive costs for functions and a
 single `EventKind` (default is `EventKind::Ir`), similar to
 `callgrind_annotate`. Suppose the example from above is stored in a benchmark
-`iai_callgrind_benchmark`:
+`gungraun_benchmark`:
 
 ![Regular Flamegraph](./images/flamegraph_regular.svg)
 
@@ -66,7 +66,7 @@ Note the following only affects flamegraphs of multi-threaded/multi-process
 benchmarks and benchmarks which produce multiple parts with a total over all
 sub-metrics.
 
-Currently, Iai-Callgrind creates the flamegraphs only for the total over all
+Currently, Gungraun creates the flamegraphs only for the total over all
 threads/parts and subprocesses. This leads to complications since the call graph
 is not be fully recovered just by examining each thread/subprocess separately.
 So, the total metrics in the flamegraphs might not be the same as the total

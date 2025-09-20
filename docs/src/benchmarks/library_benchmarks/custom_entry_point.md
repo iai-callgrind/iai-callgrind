@@ -9,15 +9,15 @@ interpreted very similar there are differences which are fully described in the
 [`Dhat`](../../dhat.md) chapter.
 
 To understand custom entry points let's take a small detour into how
-[`Callgrind`][Callgrind] and Iai-Callgrind work under the hood.
+[`Callgrind`][Callgrind] and Gungraun work under the hood.
 
-## Iai-Callgrind under the hood
+## Gungraun under the hood
 
 `Callgrind` collects metrics and associates them with a function. This happens
 based on the compiled code not the source code, so it is possible to hook into
 any function not only public functions. `Callgrind` can be configured to switch
 instrumentation on and off based on a function name with
-[`--toggle-collect`][Callgrind Arguments]. Per default, Iai-Callgrind sets this
+[`--toggle-collect`][Callgrind Arguments]. Per default, Gungraun sets this
 toggle (which we call [`EntryPoint`]) to the benchmarking function. Setting the
 toggle implies `--collect-atstart=no`. So, all events before (in the `setup`)
 and after the benchmark function (in the `teardown`) are not collected. Somewhat
@@ -26,9 +26,9 @@ simplified, but conveying the basic idea, here is a commented example:
 ```rust
 // <-- collect-at-start=no
 
-# extern crate iai_callgrind;
+# extern crate gungraun;
 # mod my_lib { pub fn bubble_sort(_: Vec<i32>) -> Vec<i32> { vec![] } }
-use iai_callgrind::{main,library_benchmark_group, library_benchmark};
+use gungraun::{main,library_benchmark_group, library_benchmark};
 use std::hint::black_box;
 
 #[library_benchmark]
@@ -47,7 +47,7 @@ main!(library_benchmark_groups = my_group);
 The fact that `Callgrind` acts on the compiled code harbors a pitfall. The
 compiler with compile-time optimizations switched on (which is usually the case
 when compiling benchmarks) inlines functions if it sees an advantage in doing
-so. Iai-Callgrind takes care, that this doesn't happen with the benchmark
+so. Gungraun takes care, that this doesn't happen with the benchmark
 function, so `Callgrind` can find and hook into the benchmark function. But, in
 your production code you actually don't want to stop the compiler from doing
 its job just to be able to benchmark that function. So, be cautious with
@@ -61,8 +61,8 @@ point to the actual function you want to benchmark. As outlined before, this
 works only reliably for functions which are not inlined by the compiler.
 
 ```rust
-# extern crate iai_callgrind;
-use iai_callgrind::{
+# extern crate gungraun;
+use gungraun::{
     main, library_benchmark_group, library_benchmark, LibraryBenchmarkConfig,
     EntryPoint, Callgrind
 };
@@ -113,7 +113,7 @@ low-level but all you need to do is search for the entries which start with
 `algorithms` module. Or, using grep:
 
 ```shell
-grep '^fn=.*::bubble_sort$' target/iai/the_package/benchmark_file_name/my_group/bench_private.bigger/callgrind.bench_private.bigger.out
+grep '^fn=.*::bubble_sort$' target/gungraun/the_package/benchmark_file_name/my_group/bench_private.bigger/callgrind.bench_private.bigger.out
 ```
 
 Having found the pattern, you can eventually use `EntryPoint::Custom`.
