@@ -111,4 +111,4 @@ test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_c
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_0:vec! [2, 1]
 test_lib_bench_compare::bubble_sort_compare_with_dhat::bench_bubble_sort_mixed_case no_compare_multiple_1:vec! [2, 4, 3, 1]
 
-Gungraun result: Ok. 25 without regressions; 0 regressed; 25 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 25 without regressions; 0 regressed; 0 filtered; 25 benchmarks finished in <__SECONDS__>s

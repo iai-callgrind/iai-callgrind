@@ -61,4 +61,4 @@ Found env: 'COMMAND_ENV' with value '5'
   Reads bytes:                             |N/A                  (*********)
   Writes bytes:                            |N/A                  (*********)
 
-Gungraun result: Ok. 2 without regressions; 0 regressed; 2 benchmarks finished in <__SECONDS__>s
+Gungraun result: Ok. 2 without regressions; 0 regressed; 0 filtered; 2 benchmarks finished in <__SECONDS__>s
